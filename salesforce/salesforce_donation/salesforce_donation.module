@@ -309,6 +309,16 @@ function salesforce_donation_fundraiser_sustainers_donation_fail($donation) {
 }
 
 /**
+ * Implements hook_fundraiser_sustainers_auto_cancel().
+ *
+ * Recurring donations that are auto canceled after consecutive failures should
+ * be exported to Salesforce with their new status.
+ */
+function salesforce_donation_fundraiser_sustainers_auto_cancel($donation) {
+  salesforce_donation_fundraiser_donation_cancel($donation);
+}
+
+/**
  * Implements hook_fundraiser_donation_delete().
  *
  * Donations that have been deleted should be added to the queue.
