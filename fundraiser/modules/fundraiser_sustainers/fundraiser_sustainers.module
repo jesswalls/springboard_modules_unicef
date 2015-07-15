@@ -2591,12 +2591,10 @@ function fundraiser_sustainers_auto_cancel($donation) {
     watchdog('fundraiser_sustainers', 'Donation cancelled for #@did. Reason: @reason',
       array('@did' => $donation->did, '@reason' => $reason));
   }
+  module_invoke_all('fundraiser_sustainers_auto_cancel', $donation);
   // Invoke a rules event on auto cancellations.
   if (module_exists("rules")) {
     rules_invoke_event("fundraiser_sustainers_auto_cancel", $donation);
-  }
-  else {
-    module_invoke_all('fundraiser_sustainers_auto_cancel', $donation);
   }
 }
 
