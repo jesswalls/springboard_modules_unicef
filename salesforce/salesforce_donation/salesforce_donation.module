@@ -296,9 +296,13 @@ function salesforce_donation_fundraiser_sustainers_donation_fail($donation) {
        $stage = $salesforce_name;
     }
   }
+
+  // If a failed stage is mapped, re-queue the failed transaction for export.
   if (isset($stage)) {
+    // Reload donation to be sure to get the most recent data.
+    $donation = fundraiser_donation_get_donation($donation->did, TRUE);
     $donation->recurring->sf_stagename = $stage;
-    // If a failed stage is mapped, re-queue the failed transaction for export.
+
     salesforce_genmap_send_object_to_queue('salesforce_donation', 'update', $donation->node, $donation->did, $donation, 'donation');
   }
   else {

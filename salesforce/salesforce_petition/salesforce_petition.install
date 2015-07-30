@@ -422,3 +422,19 @@ function salesforce_petition_petition_type_fieldmap() {
   entity_save('salesforce_mapping', $message_action_mapping);
 
 }
+
+/**
+ * Revert manual changes that were required to work around a fieldmap bug in 4.7.
+ * Changes the value of the module field from springboard_petition to salesforce_petition.
+ *
+ * See https://www.assembla.com/spaces/springboard/tickets/455#/activity/ticket:
+ * for more detail.
+ */
+function salesforce_petition_update_7001() {
+  db_update('salesforce_genmap_map')
+    ->fields(array(
+      'module' => 'salesforce_petition',
+    ))
+    ->condition('module', 'springboard_petition')
+    ->execute();
+}

@@ -35,20 +35,19 @@ function springboard_advocacy_send_message($user_message, $form_state) {
     // Build the message array.
     $message_build = springboard_advocacy_build_messages($user_message);
 
-    $node = $form_state['complete form']['#node'];
-    $test_mode = field_get_items('node', $node, 'field_test_mode');
-    if(!empty($test_mode[0]['value']) && $test_mode[0]['value'] == 1) {
-      $test_email = field_get_items('node', $node, 'field_test_mode_email');
-    }
-
     // Build the submission array
     $submission = array(
       'contact' => $contact,
       'form_id' => $values['advocacy_id'],
       'messages' => $message_build,
-      'test_mode' => !empty($test_mode[0]['value']) ? $test_mode[0]['value'] : 0,
-      'test_email' => !empty($test_email[0]['safe_value']) ? $test_email[0]['safe_value'] : '',
     );
+    $node = $form_state['complete form']['#node'];
+    $test_mode = field_get_items('node', $node, 'field_sba_test_mode');
+    if (!empty($test_mode[0]['value']) && $test_mode[0]['value'] == 1) {
+      $test_email = field_get_items('node', $node, 'field_sba_test_mode_email');
+      $submission['test_mode'] = TRUE;
+      $submission['test_email'] = !empty($test_email[0]['safe_value']) ? $test_email[0]['safe_value'] : '';
+    }
 
     // Send submission to API Client
     $loader = new AdvocacyApiClientLoader();

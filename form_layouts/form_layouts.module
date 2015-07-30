@@ -396,15 +396,43 @@ function form_layouts_preprocess_two_column_hybrid_donation(&$vars) {
  * Preprocess function that breaks a fundraiser form into its fieldsets.
  */
 function form_layouts_fundraiser_preprocess(&$vars) {
+
+  // Initialize the fieldsets with an empty string so the template won't
+  // complain if one of the fieldsets doesn't exist.
+  $fieldsets = array(
+    'donation_fieldset',
+    'donor_information_fieldset',
+    'billing_information_fieldset',
+    'payment_information_fieldset',
+    'tribute_fieldset',
+    );
+  foreach ($fieldsets as $key) {
+    $vars[$key] = '';
+  }
+
   if (isset($vars['element']['submitted']['donation'])) {
     $vars['donation_fieldset'] = drupal_render($vars['element']['submitted']['donation']);
-    $vars['donor_information_fieldset'] = drupal_render($vars['element']['submitted']['donor_information']);
-    $vars['billing_information_fieldset'] = drupal_render($vars['element']['submitted']['billing_information']);
-    $vars['payment_information_fieldset'] = drupal_render($vars['element']['submitted']['payment_information']);
-    $vars['tribute_fieldset'] = drupal_render($vars['element']['submitted']['tribute_information']);
-    // Place in a location the end template can pick up.
-    $vars['form'] = $vars['element'];
   }
+
+  if (isset($vars['element']['submitted']['donor_information'])) {
+    $vars['donor_information_fieldset'] = drupal_render($vars['element']['submitted']['donor_information']);
+  }
+
+  if (isset($vars['element']['submitted']['billing_information'])) {
+    $vars['billing_information_fieldset'] = drupal_render($vars['element']['submitted']['billing_information']);
+  }
+
+  if (isset($vars['element']['submitted']['payment_information'])) {
+    $vars['payment_information_fieldset'] = drupal_render($vars['element']['submitted']['payment_information']);
+  }
+
+  if (isset($vars['element']['submitted']['tribute_information'])) {
+    $vars['tribute_fieldset'] = drupal_render($vars['element']['submitted']['tribute_information']);
+  }
+
+  // Place in a location the end template can pick up.
+  $vars['form'] = $vars['element'];
+
 }
 
 /**

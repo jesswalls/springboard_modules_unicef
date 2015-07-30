@@ -21,7 +21,7 @@ function salesforce_petition_salesforce_genmap_map_field_info_alter(&$fields, $n
  * Implements hook_salesforce_genmap_map_fields_alter().
  */
 function salesforce_petition_salesforce_genmap_map_fields_alter(&$fields, $context) {
-  if ($context['module'] == 'webform' && $context['map']->module == 'springboard_petition') {
+  if ($context['module'] == 'webform' && $context['map']->module == 'salesforce_petition') {
     $fields[$context['map']->field_map['salesforce_node_map']['action']] = sprintf('[sb_action__c:springboard_petition:%d]', $context['node']->nid);
     $fields[$context['map']->field_map['salesforce_node_map']['action_type']] = 'Petition';
   }

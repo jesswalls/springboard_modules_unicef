@@ -111,7 +111,7 @@ function sba_message_action_node_view($node, $view_mode, $langcode) {
     // Warn admins of config issues
     if(user_access('create sba_message_action content') || user_access('administer nodes')) {
       //Test mode warning
-      $test_mode = field_get_items('node', $node, 'field_test_mode');
+      $test_mode = field_get_items('node', $node, 'field_sba_test_mode');
       if (is_array($test_mode)) {
         $test_mode = reset($test_mode);
         if ($test_mode['value'] == 1) {
@@ -701,9 +701,36 @@ function sba_message_action_form_submit($form, &$form_state) {
  * @param $form_state
  */
 function sba_message_action_form_sba_message_action_node_form_alter(&$form, &$form_state) {
-  $node = $form['#node'];
-  if (empty($node->nid) && in_array($node->type, webform_variable_get('webform_node_types_primary'))) {
+
+  $form['field_sba_test_mode_email']['#states']['visible'] = array(
+    ':input[name="field_sba_test_mode[und][1]"]' => array('checked' => TRUE),
+  );
+  $form['field_sba_test_mode_email']['#states']['required'] = array(
+    ':input[name="field_sba_test_mode[und][1]"]' => array('checked' => TRUE),
+  );
+  $form['actions']['submit']['#validate'][] = 'sba_message_action_form_sba_message_action_node_form_validate';
+
+  if (empty($form['#node']->nid)) {
     $form['actions']['submit']['#submit'][] = 'sba_message_action_form_sba_message_action_node_form_submit';
+  }
+}
+
+/**
+ * Require the test_mode_email_address field.
+ *
+ * @param $form
+ * @param $form_state
+ */
+function sba_message_action_form_sba_message_action_node_form_validate(&$form, &$form_state) {
+
+  // Require test_mode_email if test_mode is checked.
+  if ($form_state['values']['field_sba_test_mode'][LANGUAGE_NONE][0]['value'] == 1) {
+    if ($form_state['values']['field_sba_test_mode_email'][LANGUAGE_NONE][0]['value'] == '') {
+      form_set_error('field_sba_test_mode_email', t('Email address is required'));
+    }
+    elseif (!valid_email_address($form_state['values']['field_sba_test_mode_email'][LANGUAGE_NONE][0]['value'])) {
+      form_set_error('field_sba_test_mode_email', t('Invalid email address.'));
+    }
   }
 }
 

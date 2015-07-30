@@ -53,7 +53,7 @@ function sba_message_access($op, $sba_message = NULL, $account = NULL) {
     if (arg(2) == 'messages' && arg(3) == 'add') {
       if (isset($node->message_ids)) {
         $messages = entity_load('sba_message', $node->message_ids);
-        if (count($messages == 1)) {
+        if (count($messages) == 1) {
           $message = array_pop($messages);
           $subject_editable = field_get_items('sba_message', $message, 'field_sba_subject_editable');
           $user_editable = field_get_items('sba_message', $message, 'field_sba_user_editable');

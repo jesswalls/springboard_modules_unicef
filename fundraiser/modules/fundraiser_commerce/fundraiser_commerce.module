@@ -328,6 +328,11 @@ function fundraiser_commerce_commerce_order_status_info() {
       'title' => 'Failed refund',
       'state' => 'canceled',
     ),
+    'void' => array(
+      'name' => 'void',
+      'title' => 'Void',
+      'state' => 'canceled',
+    ),
     'skipped' => array(
       'name' => 'skipped',
       'title' => 'Skipped',
@@ -387,6 +392,7 @@ function _fundraiser_commerce_commerce_order_statuses_used() {
     'partially_refunded',
     'payment_received',
     'skipped',
+    'void',
   );
 }
 
@@ -877,7 +883,15 @@ function fundraiser_commerce_fundraiser_donation_get_donation($donation) {
 
   // Reverse the work done by commerce_currency_decimal_to_amount($donation->donation['amount'], $donation->donation['currency'])
   // So we have the correct decimaled value.
-  $donation->donation['amount'] = commerce_currency_amount_to_decimal($order_total['amount'], $order_total['currency_code']);
+  // Note that commerce_currency_amount_to_decimal() does not pad the decimal
+  // places, but commerce_currency_format() does. (ie. 10.5 vs $10.50).
+  // Also note that this number_format does not include a comma.
+  // The number_format won't play nicely with other currencies that use
+  // difference separators.
+  // This should later be fixed to not use the numbeer_format, and for display
+  // tokens use amount_formatted for display and amount for math and backend
+  // things.
+  $donation->donation['amount'] = number_format(commerce_currency_amount_to_decimal($order_total['amount'], $order_total['currency_code']), 2, '.', '');
   $donation->donation['currency'] = commerce_currency_load($order_total['currency_code']);
   $donation->donation['amount_formatted'] = commerce_currency_format($order_total['amount'], $order_total['currency_code']);
 
@@ -889,10 +903,10 @@ function fundraiser_commerce_fundraiser_donation_get_donation($donation) {
     if ($line_item_wrapper->type->value() == 'donation' && $line_item_wrapper->quantity->value() > 1) {
       // Reset the donation amount and quantity from this line item
       $donation->donation['quantity'] = $line_item_wrapper->quantity->value();
-      $donation->donation['amount'] = commerce_currency_amount_to_decimal(
+      $donation->donation['amount'] = number_format(commerce_currency_amount_to_decimal(
         $line_item_wrapper->commerce_unit_price->amount->value() * $line_item_wrapper->quantity->value(),
         $line_item_wrapper->commerce_unit_price->currency_code->value()
-      );
+      ), 2, '.', '');
       $donation->donation['currency'] = commerce_currency_load($line_item_wrapper->commerce_unit_price->currency_code->value());
     }
   }
@@ -1088,7 +1102,7 @@ function fundraiser_commerce_fundraiser_donation_create($donation) {
     $method_instance = _fundraiser_gateway_info($info['id']);
   }
 
-  $scrubbed_fields = $donation->donation['payment_fields'];
+  $scrubbed_fields = isset($donation->donation['payment_fields']) ? $donation->donation['payment_fields'] : array();
   if (isset($method_instance['scrub callback']) && function_exists($method_instance['scrub callback'])) {
     $callback = $method_instance['scrub callback'];
     $scrubbed_fields = $callback($scrubbed_fields, $donation->donation['payment_method']);
@@ -1712,7 +1726,7 @@ function fundraiser_commerce_fundraiser_donation_update($donation) {
     }
 
     // Allow the gateways to scrub the data before saving
-    $scrubbed_fields = $donation->donation['payment_fields'];
+    $scrubbed_fields = isset($donation->donation['payment_fields']) ? $donation->donation['payment_fields'] : array();
     if (isset($donation->gateway['scrub callback']) && function_exists($donation->gateway['scrub callback'])) {
       $scrubbed_fields = $donation->gateway['scrub callback']($scrubbed_fields, $donation->donation['payment_method']);
     }

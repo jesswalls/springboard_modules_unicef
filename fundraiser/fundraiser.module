@@ -1471,6 +1471,9 @@ function fundraiser_display_form_fields($calling_module, &$form, $form_state, $f
  * Process through given submission fields to validate on the fly. Recursive.
  * This handles the calls to additional validation callbacks as defined in the field_info array.
  * May be called by any module that needs to perform validation on a submitted array. See sustainers.
+ *
+ * @return bool
+ *   TRUE if there are validation errors.
  */
 function fundraiser_validate_form_fields($form, $form_state, $submission_fields, $field_info = NULL, $errors = FALSE) {
   // Grab field info, we'll use this all the way down.

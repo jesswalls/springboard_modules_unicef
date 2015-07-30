@@ -57,7 +57,7 @@ function webform_user_menu() {
   return $items;
 }
 
-/** 
+/**
  * Implements hook_springboard_admin_alias_patterns().
  */
 function webform_user_springboard_admin_alias_patterns() {
@@ -458,7 +458,7 @@ function webform_user_form_alter(&$form, &$form_state, $form_id) {
         } // End if field is in component heirarchy.
       } // End foreach
     } // End if the user is logged in.
-    
+
     // If not logged in, check to see if the user has profile values in the current session from a previous submission.
     // This will only be the case if the global option for saving webform_user submissions is enabled.
     $webform_user_session_store = user_is_anonymous()
@@ -491,7 +491,7 @@ function webform_user_form_alter(&$form, &$form_state, $form_id) {
         } // End if field is in component heirarchy
       } // End foreach
     }  // End if the user is anonymous
-    
+
     // Add a new validation handler.
     $form['#validate'][] = 'webform_user_webform_validate';
     // Add new submit handler.
@@ -524,7 +524,7 @@ function webform_user_webform_validate($form, &$form_state) {
   if (_webform_user_is_webform_user_node($node) && !_webform_user_validate_email($mail)) {
     form_set_error('mail', t('Please enter a valid email address.'));
   }
-  // When user is logged in make sure email isn't updated to 
+  // When user is logged in make sure email isn't updated to
   // a value already in use by another account.
   if (!$skip_user_check && isset($user->mail)) {
     // Mail is being updated, confirm the supplied value isn't already in use.
@@ -588,7 +588,7 @@ function webform_user_webform_submit($form, &$form_state) {
       _webform_user_save_profile_map($account->uid, $map);
       $submission = webform_get_submission($node->nid, $form_state['values']['details']['sid']);
       $submission->uid = $account->uid;
-      // Setting this flag skips uid checking during presave. 
+      // Setting this flag skips uid checking during presave.
       if ($skip_user_check) {
         $submission->webform_user_skip_user_check = TRUE;
       }
@@ -1196,19 +1196,35 @@ function _webform_user_is_webform_user_session_store() {
 }
 
 /**
- * Helper function, return a map of webform components to user profile fields.
+ * Get an array of webform component values keyed to user profile fields.
+ *
+ * @param int $nid
+ *   Node ID. Used to get the webform component to user profile map.
+ * @param array $fields
+ *   The webform component fields, keyed by the webform form key.
+ * @return array
+ *   An array of field valudes keyed by user profile field names.
  */
 function _webform_user_get_map($nid, $fields) {
-  $map = webform_user_user_map($nid);
-  if ($map) {
-    foreach ($map as $key => $value) {
+  $webform_map = webform_user_user_map($nid);
+  $user_map = array();
+
+  if ($webform_map) {
+    // If address is set in the fields but not address line 2,
+    // then set address line 2 to an empty string so it'll overwrite the
+    // existing value.
+    if (isset($fields['address']) && !isset($fields['address_line_2'])) {
+      $fields['address_line_2'] = '';
+    }
+
+    foreach ($webform_map as $key => $value) {
       if (isset($fields[$key])) {
-        $map2[$value] = $fields[$key];
+        $user_map[$value] = $fields[$key];
       }
     }
-    return $map2;
   }
-  return array();
+
+  return $user_map;
 }
 
 /**
@@ -1435,7 +1451,12 @@ function _webform_user_delete_node_values($node) {
 }
 
 /**
- * Database function, creates an array to map webform component fields to user profile fields from DB.
+ * Creates an array to map webform component fields to user profile fields.
+ *
+ * @param int $nid
+ *   The node ID to lookup.
+ * @return array
+ *   An array of fields names or map ids, keyed by webform form id.
  */
 function webform_user_user_map($nid) {
   $map = array();

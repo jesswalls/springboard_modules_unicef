@@ -920,7 +920,7 @@ function _page_wrappers_create_template($node) {
 
   if (empty($filename)) {
     // create a template file name based on title
-    $filename = 'page--' . strtolower(str_replace(' ', '-', $node->title)) . '-' . time() . '.tpl.php'; // TODO: Better filename creator
+    $filename = page_wrappers_format_filename($node->title);
   }
 
   $full_path = $base_path . '/tpl';
@@ -960,6 +960,30 @@ function _page_wrappers_create_template($node) {
 
   return FALSE;
 
+}
+
+/**
+ * Formats the node title for a page wrapper template filename.
+ *
+ * Uses transliteration cleaning when available.
+ *
+ * @param string $title
+ *   The page wrapper node title.
+ *
+ * @return string
+ *   The clean filename for the page wrapper template file.
+ */
+function page_wrappers_format_filename($title) {
+  $name = str_replace(' ', '-', $title) . '-' . REQUEST_TIME . '.tpl.php';
+
+  if (module_exists('transliteration')) {
+    $name = transliteration_clean_filename($name, language_default('language'));
+  }
+  else {
+    $name = drupal_strtolower(preg_replace('![^0-9A-Za-z_.-]!', '', $name));
+  }
+
+  return 'page--' . $name;
 }
 
 /**

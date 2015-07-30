@@ -213,13 +213,19 @@ function springboard_tag_springboard_tag_list_alter(&$tags) {
       }
     }
 
-    // If a tag has no roles associated, it is displayed for every role.
-    // For tags with roles associated, if none of the user's roles matches
-    // the settings from this tag, remove it from the block list.
-    if (array_filter($user['roles']) && !array_intersect($user['roles'], array_keys($account->roles))) {
-      // No match.
-      unset($tags[$key]);
-      continue;
+    // Check if the current user should not see this tag by role.
+    // For tags with roles associated, if any of the user's roles matches
+    // the settings from this tag, remove it from the tag list.
+    if (array_filter($user['roles'])) {
+      // One or more roles are selected.
+      foreach (array_keys($account->roles) as $rid) {
+        // Is the current user a member of one of these roles?
+        if (isset($user['roles'][$rid]) && $rid == $user['roles'][$rid]) {
+          // Current user is a member of a role that should be excluded from seeing this tag.
+          unset($tags[$key]);
+          continue;
+        }
+      }
     }
 
     // Limited visibility blocks must list at least one page.

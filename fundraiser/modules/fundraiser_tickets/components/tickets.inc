@@ -237,7 +237,7 @@ function theme_fundraiser_tickets_webform_table($variables) {
       );
 
       $ticket_prices[$product_wrapper->product_id->value()] = array(
-        'amount' => commerce_currency_amount_to_decimal($ticket_amount, $ticket_currency_code),
+        'amount' => number_format(commerce_currency_amount_to_decimal($ticket_amount, $ticket_currency_code), 2),
         'currency' => $ticket_currency,
       );
       $description = array(

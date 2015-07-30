@@ -2,15 +2,13 @@ name = Springboard Social
 description = Integrates Springboard petitions and donation forms with the AddThis social sharing service.
 package = Jackson River Springboard - extras
 core = 7.x
-version = 7.x-4.x-social-actions-rebase
+version = 7.x-4.x
 configure = admin/config/services/springboard_social
 
 dependencies[] = shorten
 dependencies[] = fundraiser
 dependencies[] = fundraiser_webform
 dependencies[] = market_source
-dependencies[] = salesforce_queue
-dependencies[] = salesforce_genmap
 
 files[] = tests/sb_social.test
 

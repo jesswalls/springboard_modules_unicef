@@ -277,7 +277,7 @@ function springboard_advocacy_dashboard($path, $arg = NULL) {
       if(isset($message_types[$node->type])) {
         if(isset($node->message_ids)) {
           $messages = entity_load('sba_message', $node->message_ids);
-          if(count($messages == 1)) {
+          if(count($messages) == 1) {
             $message = array_pop($messages);
             $subject_editable = field_get_items('sba_message', $message, 'field_sba_subject_editable');
             $user_editable = field_get_items('sba_message', $message, 'field_sba_user_editable');

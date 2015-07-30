@@ -691,38 +691,39 @@ function fundraiser_webform_fundraiser_donation_validate($form, $form_state) {
   $errors = fundraiser_validate_form_fields($form, $form_state, $submission_fields);
 
   // Create watchdog entry on validation errors.
-  if (form_get_errors() || $errors) {
-    $message = "The following donation form fields failed local validation:\n\n";
-    $check_errors = form_get_errors();
-    $validation_errors = is_array($check_errors) ? array_keys($check_errors) : array();
-    foreach ($validation_errors as $field) {
-      $keys = explode('][', $field);
-      $message .= array_pop($keys) . "\n";
-    }
+  $check_errors = form_get_errors();
+  if ($check_errors || $errors) {
 
-    if (!empty($scrub_callback)) {
-      // SCRUB DATA. We do not want to save sensitive payment data in the
-      // error watchdog message.
-      $submission_fields['payment_fields'] = $scrub_callback($submission_fields['payment_fields'], $submission_fields['payment_method']);
-    }
+    // Don't log during ajax validation or if logging is disabled.
+    if ($form_state['submitted'] && variable_get('fundraiser_log_local_validation_errors', FALSE)) {
+      $message = "The following donation form fields failed local validation:\n\n";
 
-    $message .= "\n\nSubmitted Values:\n\n";
-    foreach ($submission_fields as $key => $value) {
-      if (is_array($value)) {
-        $message .= $key . ': ' . check_plain(print_r($value, 1)) . "\n";
+      $validation_errors = is_array($check_errors) ? array_keys($check_errors) : array();
+      foreach ($validation_errors as $field) {
+        $keys = explode('][', $field);
+        $message .= array_pop($keys) . "\n";
       }
-      else {
-        $message .= $key . ': ' . check_plain($value) . "\n";
+
+      if (!empty($scrub_callback)) {
+        // SCRUB DATA. We do not want to save sensitive payment data in the
+        // error watchdog message.
+        $submission_fields['payment_fields'] = $scrub_callback($submission_fields['payment_fields'], $submission_fields['payment_method']);
       }
+
+      $message .= "\n\nSubmitted Values:\n\n";
+      foreach ($submission_fields as $key => $value) {
+        // print_r() will print strings, integers, and floats as strings,
+        // so no need to test with is_array().
+        $message .= $key . ': ' . check_plain(print_r($value, TRUE)) . "\n";
+      }
+      watchdog('fundraiser_webform', $message, NULL, WATCHDOG_DEBUG, NULL);
     }
-    watchdog('fundraiser_webform', $message, NULL, WATCHDOG_DEBUG, NULL);
 
     // Provide data to fundraiser about the node that failed to validate.
-    $errors = array();
-    $errors['nid'] = $form_state['values']['details']['nid'];
-
     // So fundraiser can pick up on the failure.
-    return $errors;
+    return array(
+      'nid' => $form_state['values']['details']['nid'],
+    );
   }
 }
 

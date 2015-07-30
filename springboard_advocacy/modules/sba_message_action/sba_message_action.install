@@ -45,6 +45,7 @@ function sba_message_action_install() {
   _sba_message_action_create_content_type();
   _sba_message_action_reorder_internal_name();
   _sba_message_action_create_example_message_action();
+  _springboard_message_action_install_taxonomy_fields();
 
 }
 
@@ -269,7 +270,7 @@ function _sba_message_action_create_node_fields($update = false) {
           'module' => 'text',
           'settings' => array(),
           'type' => 'text_default',
-          'weight' => 0,
+          'weight' => 5,
         ),
         'teaser' => array(
           'label' => 'hidden',
@@ -278,7 +279,7 @@ function _sba_message_action_create_node_fields($update = false) {
             'trim_length' => 600,
           ),
           'type' => 'text_summary_or_trimmed',
-          'weight' => 0,
+          'weight' => 5,
         ),
       ),
       'entity_type' => 'node',
@@ -298,7 +299,7 @@ function _sba_message_action_create_node_fields($update = false) {
           'summary_rows' => 5,
         ),
         'type' => 'text_textarea_with_summary',
-        'weight' => 4,
+        'weight' => 5,
       ),
     )
 
@@ -342,13 +343,13 @@ function _sba_message_action_create_node_fields($update = false) {
           'module' => 'text',
           'settings' => array(),
           'type' => 'text_default',
-          'weight' => 5,
+          'weight' => 4,
         ),
         'teaser' => array(
           'label' => 'none',
           'settings' => array(),
           'type' => 'hidden',
-          'weight' => 0,
+          'weight' => 4,
         ),
       ),
       'entity_type' => 'node',
@@ -366,17 +367,17 @@ function _sba_message_action_create_node_fields($update = false) {
           'size' => 60,
         ),
         'type' => 'text_textfield',
-        'weight' => 3,
+        'weight' => 4,
       ),
     )
   );
 
-  $fields['field_test_mode'] = array(
+  $fields['field_sba_test_mode'] = array(
     'active' => 1,
     'cardinality' => 2,
     'deleted' => 0,
     'entity_types' => array(),
-    'field_name' => 'field_test_mode',
+    'field_name' => 'field_sba_test_mode',
     'foreign keys' => array(),
     'indexes' => array(
       'value' => array(
@@ -413,7 +414,7 @@ function _sba_message_action_create_node_fields($update = false) {
         ),
       ),
       'entity_type' => 'node',
-      'field_name' => 'field_test_mode',
+      'field_name' => 'field_sba_test_mode',
       'label' => 'Enable Test Mode',
       'required' => 0,
       'settings' => array(
@@ -430,13 +431,13 @@ function _sba_message_action_create_node_fields($update = false) {
     ),
   );
 
-  // Exported field_base: 'field_test_mode_email'
-  $fields['field_test_mode_email'] = array(
+  // Exported field_base: 'field_sba_test_mode_email'
+  $fields['field_sba_test_mode_email'] = array(
     'active' => 1,
     'cardinality' => 1,
     'deleted' => 0,
     'entity_types' => array(),
-    'field_name' => 'field_test_mode_email',
+    'field_name' => 'field_sba_test_mode_email',
     'foreign keys' => array(
       'format' => array(
         'columns' => array(
@@ -461,7 +462,7 @@ function _sba_message_action_create_node_fields($update = false) {
       'bundle' => 'sba_message_action',
       'default_value' => NULL,
       'deleted' => 0,
-      'description' => 'Enter an optional email address for test mode. Test messages will sent to this address instead of to the configured targets.',
+      'description' => 'Enter an email address for test mode. Test messages will be sent to this address instead of to the configured targets.',
       'display' => array(
         'default' => array(
           'label' => 'hidden',
@@ -478,7 +479,7 @@ function _sba_message_action_create_node_fields($update = false) {
         ),
       ),
       'entity_type' => 'node',
-      'field_name' => 'field_test_mode_email',
+      'field_name' => 'field_sba_test_mode_email',
       'label' => 'Test Mode Email Address',
       'required' => 0,
       'settings' => array(
@@ -526,8 +527,8 @@ function _sba_message_action_create_node_fields($update = false) {
     $field_group->label = 'Test Mode';
     $field_group->weight = '33';
     $field_group->children = array(
-      0 => 'field_test_mode',
-      1 => 'field_test_mode_email',
+      0 => 'field_sba_test_mode',
+      1 => 'field_sba_test_mode_email',
     );
     $field_group->format_type = 'fieldset';
     $field_group->format_settings = array(
@@ -823,8 +824,12 @@ function _sba_message_action_reorder_internal_name() {
   $instance_info['widget']['weight'] = 2;
   field_update_instance($instance_info);
 
+  $instance_info = field_read_instance('node', 'field_message_call_to_action', 'sba_message_action');
+  $instance_info['widget']['weight'] = 4;
+  field_update_instance($instance_info);
+
   $instance_info = field_read_instance('node', 'body', 'sba_message_action');
-  $instance_info['widget']['weight'] = 3;
+  $instance_info['widget']['weight'] = 5;
   field_update_instance($instance_info);
 }
 
@@ -834,12 +839,11 @@ function _springboard_message_action_install_taxonomy_fields() {
   module_load_install('springboard_advocacy');
   if(function_exists('_springboard_advocacy_install_taxonomy_field_definitions')) {
     foreach (_springboard_advocacy_install_taxonomy_field_definitions() as $field_name => $field) {
-      $exists = field_info_field($field_name);
-      if (empty($exists)) {
+      if (!field_info_field('field_' . $field_name)) {
         field_create_field($field['field_config']);
       }
       // Before adding the field, check that it doesn't exist on the node type.
-      if (!field_info_instance('node', $field_name, 'sba_message_action')) {
+      if (!field_info_instance('node', 'field_' . $field_name, 'sba_message_action')) {
         field_create_instance($field['field_instance']);
       }
     }
@@ -948,8 +952,95 @@ function sba_message_action_update_7004() {
   field_update_instance($instance_info);
 }
 
-//function sba_message_action_update_7005()
-//{
-//  cache_clear_all();
-//  _springboard_message_action_install_taxonomy_fields();
-//}
+/**
+ * Update description of the test mode field.
+ */
+function sba_message_action_update_7005() {
+  $field = field_info_instance('node', 'field_test_mode_email', 'sba_message_action');
+  if ($field) {
+    $field['description'] = t(
+      'Enter an email address for test mode. Test messages will be sent to this address instead of to the configured targets.'
+    );
+    field_update_instance($field);
+  }
+}
+
+
+/**
+ * Namespace the test_mode fields.
+ */
+function sba_message_action_update_7006() {
+
+  $names = array(
+    'field_test_mode' => 'field_sba_test_mode',
+    'field_test_mode_email' => 'field_sba_test_mode_email',
+  );
+
+  foreach ($names as $old_name => $new_name) {
+    if (db_table_exists('field_data_' . $old_name)) {
+
+      // Get the "value" and "format" storage column names.
+      $field_info = field_info_field($old_name);
+      $storage = $field_info['storage']['details'];
+
+      // Rename the value and format fields and reset the indexes.
+      foreach ($storage['sql']['FIELD_LOAD_CURRENT'] as $field) {
+        foreach ($field as $key => $old_storage_column) {
+
+          // Drop indexes.
+          db_drop_index('field_data_' . $old_name, $old_storage_column);
+          db_drop_index('field_revision_' . $old_name, $old_storage_column);
+
+          // Rename storage columns.
+          $spec = $field_info['columns'][$key];
+          $new_storage_column = $new_name . '_' . $key;
+          db_change_field(
+            'field_data_' . $old_name,
+            $old_storage_column,
+            $new_storage_column,
+            $spec,
+            array('indexes' => array($new_storage_column => array($new_storage_column)))
+          );
+          db_change_field(
+            'field_revision_' . $old_name,
+            $old_storage_column,
+            $new_storage_column,
+            $spec,
+            array('indexes' => array($new_storage_column => array($new_storage_column)))
+          );
+        }
+      }
+
+      // Rename the tables.
+      db_rename_table('field_data_' . $old_name, 'field_data_' . $new_name);
+      db_rename_table('field_revision_' . $old_name, 'field_revision_' . $new_name);
+
+      // Update the config records with the new names.
+      db_update('field_config')->fields(array('field_name' => $new_name))
+        ->condition('field_name', $old_name)
+        ->execute();
+      db_update('field_config_instance')->fields(array('field_name' => $new_name))
+        ->condition('field_name', $old_name)
+        ->execute();
+
+    }
+  }
+
+  // Namespace the field group.
+  $field_group = field_group_load_field_group('group_test_mode', 'node', 'sba_message_action', 'form');
+  $table = 'field_group';
+
+  // If the group exists make sure its not disabled.
+  if ($field_group) {
+    $field_group->identifier = 'group_sba_test_mode|node|sba_message_action|form';
+    $field_group->group_name = 'group_sba_test_mode';
+    $field_group->children = array('field_sba_test_mode', 'field_sba_test_mode_email');
+    ctools_export_crud_save($table, $field_group);
+  }
+}
+/**
+ * Reorder field weights on edit form.
+ */
+function sba_message_action_update_7007() {
+  _sba_message_action_reorder_internal_name();
+}

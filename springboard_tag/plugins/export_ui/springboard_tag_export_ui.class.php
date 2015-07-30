@@ -59,10 +59,10 @@ class springboard_tag_export_ui extends ctools_export_ui {
     $role_options = array_map('check_plain', user_roles());
     $form['visibility']['user']['roles'] = array(
       '#type' => 'checkboxes',
-      '#title' => t('Show tag for specific user roles'),
+      '#title' => t('Exclude tag for specific user roles'),
       '#default_value' => $form_state['item']->settings['visibility']['user']['roles'],
       '#options' => $role_options,
-      '#description' => t('Show this tag only for the selected role(s). If you select no roles, the tag will be visible to all users.'),
+      '#description' => t('Exclude this tag for the selected role(s). If you select no roles, the tag will be visible to all users.'),
     );
 
     // Per-path visibility.

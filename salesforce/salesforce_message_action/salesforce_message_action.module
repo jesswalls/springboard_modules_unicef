@@ -21,7 +21,7 @@ function salesforce_message_action_salesforce_genmap_map_field_info_alter(&$fiel
  * Implements hook_salesforce_genmap_map_fields_alter().
  */
 function salesforce_message_action_salesforce_genmap_map_fields_alter(&$fields, $context) {
-  if ($context['module'] == 'webform' && $context['map']->module == 'sba_message_action') {
+  if ($context['module'] == 'webform' && $context['map']->module == 'salesforce_message_action') {
     $fields[$context['map']->field_map['salesforce_node_map']['action']] = sprintf('[sb_action__c:sba_message_action:%d]', $context['node']->nid);
     $fields[$context['map']->field_map['salesforce_node_map']['action_type']] = 'Message Action';
   }
