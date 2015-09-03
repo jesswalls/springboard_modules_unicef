@@ -32,11 +32,23 @@ function form_layouts_theme($existing, $type, $theme, $path) {
  */
 function form_layouts_form_node_form_alter(&$form, &$form_state, $form_id) {
   if (isset($form['#node']) && form_layouts_type_is_layouts_enabled($form['#node']->type)) {
+    // Share the "Display" fieldset with related modules (e.g., Page Wrappers).
+    if (empty($form['springboard_display'])) {
+      $form['springboard_display'] = array(
+          '#type' => 'fieldset',
+          '#title' => t('Display settings'),
+          '#collapsible' => TRUE,
+          '#collapsed' => FALSE,
+          '#group' => 'additional_settings',
+      );
+    }
+
     $templates = form_layouts_info();
 
     // Different layouts support fundraiser types or petiton types or general
     // webform types.
     $fundraiser_enabled = fundraiser_is_donation_type($form['#node']->type);
+
     if (module_exists('springboard_petition')) {
       $petition_enabled = springboard_petition_is_petition_type($form['#node']->type);
     }
@@ -44,10 +56,17 @@ function form_layouts_form_node_form_alter(&$form, &$form_state, $form_id) {
       $petition_enabled = FALSE;
     }
 
+    if (module_exists('springboard_advocacy')) {
+      $advocacy_enabled = springboard_advocacy_is_action_type($form['#node']->type);
+    }
+    else {
+      $advocacy_enabled = FALSE;
+    }
+
     $options = array();
     foreach ($templates as $template) {
       // Only show compatible layouts.
-      if (form_layouts_options_should_include_template_type($template['types'], $fundraiser_enabled, $petition_enabled)) {
+      if (form_layouts_options_should_include_template_type($template['types'], $fundraiser_enabled, $petition_enabled, $advocacy_enabled)) {
         $options[$template['theme']] = $template['name'];
       }
     }
@@ -57,15 +76,14 @@ function form_layouts_form_node_form_alter(&$form, &$form_state, $form_id) {
     if (!empty($template)) {
       $theme = $template['theme'];
     }
-    $form['form_layouts'] = array(
+    $form['springboard_display']['form_layouts'] = array(
       '#type' => 'fieldset',
       '#title' => t('Form layout settings'),
       '#description' => t('Select the form layout for this content. Defaults to one-column layout.'),
       '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#group' => 'additional_settings',
+      '#collapsed' => FALSE,
     );
-    $form['form_layouts']['form_layouts'] = array(
+    $form['springboard_display']['form_layouts']['form_layouts'] = array(
       '#type' => 'select',
       '#title' => t('Form layout'),
       '#options' => $options,
@@ -90,14 +108,17 @@ function form_layouts_form_node_form_alter(&$form, &$form_state, $form_id) {
  *   TRUE if this template type should be displayed in the list of
  *   layout options.
  */
-function form_layouts_options_should_include_template_type($template_types, $fundraiser_enabled, $petition_enabled) {
+function form_layouts_options_should_include_template_type($template_types, $fundraiser_enabled, $petition_enabled, $advocacy_enabled) {
   if ($fundraiser_enabled && in_array('fundraiser', $template_types)) {
     return TRUE;
   }
   elseif ($petition_enabled && in_array('petition', $template_types)) {
     return TRUE;
   }
-  elseif (!$fundraiser_enabled && !$petition_enabled && in_array('webform', $template_types)) {
+  elseif ($advocacy_enabled && in_array($advocacy_enabled, $template_types)) {
+    return TRUE;
+  }
+  elseif (!$fundraiser_enabled && !$petition_enabled && !$advocacy_enabled && in_array('webform', $template_types)) {
     return TRUE;
   }
 
@@ -158,6 +179,7 @@ function form_layouts_node_delete($node) {
  * Otherwise it's a fundraiser only layout and so change the webform theme.
  */
 function form_layouts_node_view($node, $view_mode, $langcode) {
+
   if (form_layouts_type_is_layouts_enabled($node->type) && isset($node->form_layouts)) {
     $template = form_layouts_get_node_template($node->nid);
 
@@ -178,13 +200,15 @@ function form_layouts_node_view($node, $view_mode, $langcode) {
  * Implements hook_form_FORM_ID_alter() for webform_client forms.
  */
 function form_layouts_form_webform_client_form_alter(&$form, &$form_state, $form_id) {
-  $nid = $form['#node']->nid;
-  $template = form_layouts_get_node_template($nid);
+  if (form_layouts_type_is_layouts_enabled($form['#node']->type) && isset($form['#node']->form_layouts)) {
+    $nid = $form['#node']->nid;
+    $template = form_layouts_get_node_template($nid);
 
-  if (form_layouts_template_themes_webform($template)) {
-    $form['#theme'] = array($template['theme'] . '_' . $nid, $template['theme']);
-    $form['#attributes']['class'][] = 'form-layouts';
-    $form['#attributes']['class'][] = $template['template'];
+    if (form_layouts_template_themes_webform($template)) {
+      $form['#theme'] = array($template['theme'] . '_' . $nid, $template['theme']);
+      $form['#attributes']['class'][] = 'form-layouts';
+      $form['#attributes']['class'][] = $template['template'];
+    }
   }
 }
 
@@ -314,7 +338,6 @@ function form_layouts_form_layouts_info() {
 function form_layouts_get_node_template($nid) {
   $layout = new FormLayout($nid);
   $theme = $layout->getName();
-
   return form_layouts_get_node_template_by_name($theme);
 }
 
@@ -373,15 +396,43 @@ function form_layouts_preprocess_two_column_hybrid_donation(&$vars) {
  * Preprocess function that breaks a fundraiser form into its fieldsets.
  */
 function form_layouts_fundraiser_preprocess(&$vars) {
+
+  // Initialize the fieldsets with an empty string so the template won't
+  // complain if one of the fieldsets doesn't exist.
+  $fieldsets = array(
+    'donation_fieldset',
+    'donor_information_fieldset',
+    'billing_information_fieldset',
+    'payment_information_fieldset',
+    'tribute_fieldset',
+    );
+  foreach ($fieldsets as $key) {
+    $vars[$key] = '';
+  }
+
   if (isset($vars['element']['submitted']['donation'])) {
     $vars['donation_fieldset'] = drupal_render($vars['element']['submitted']['donation']);
-    $vars['donor_information_fieldset'] = drupal_render($vars['element']['submitted']['donor_information']);
-    $vars['billing_information_fieldset'] = drupal_render($vars['element']['submitted']['billing_information']);
-    $vars['payment_information_fieldset'] = drupal_render($vars['element']['submitted']['payment_information']);
-    $vars['tribute_fieldset'] = drupal_render($vars['element']['submitted']['tribute_information']);
-    // Place in a location the end template can pick up.
-    $vars['form'] = $vars['element'];
   }
+
+  if (isset($vars['element']['submitted']['donor_information'])) {
+    $vars['donor_information_fieldset'] = drupal_render($vars['element']['submitted']['donor_information']);
+  }
+
+  if (isset($vars['element']['submitted']['billing_information'])) {
+    $vars['billing_information_fieldset'] = drupal_render($vars['element']['submitted']['billing_information']);
+  }
+
+  if (isset($vars['element']['submitted']['payment_information'])) {
+    $vars['payment_information_fieldset'] = drupal_render($vars['element']['submitted']['payment_information']);
+  }
+
+  if (isset($vars['element']['submitted']['tribute_information'])) {
+    $vars['tribute_fieldset'] = drupal_render($vars['element']['submitted']['tribute_information']);
+  }
+
+  // Place in a location the end template can pick up.
+  $vars['form'] = $vars['element'];
+
 }
 
 /**
@@ -407,7 +458,7 @@ function form_layouts_type_is_layouts_enabled($type) {
  *   TRUE if the template is meant to theme the webform and not the whole node.
  */
 function form_layouts_template_themes_webform($template) {
-  if (isset($template['types']) && in_array('fundraiser', $template['types'])) {
+  if (isset($template['types']) && (in_array('fundraiser', $template['types']) || in_array('sba_message_action', $template['types']))) {
     return TRUE;
   }
 

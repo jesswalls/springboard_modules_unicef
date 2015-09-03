@@ -64,6 +64,7 @@ function fundraiser_sustainers_insights_dashboard($path_range = 'last-7-days') {
     array('data' => 'Successful', 'colspan' => 2),
     array('data' => 'Failed/Rescheduled', 'colspan' => 2),
     array('data' => 'Failed/Abandoned', 'colspan' => 2),
+    array('data' => 'Failed/Auto-canceled', 'colspan' => 2),
   );
 
   $rows = array();
@@ -71,6 +72,8 @@ function fundraiser_sustainers_insights_dashboard($path_range = 'last-7-days') {
   $first_row = array(
     'data' => array(
       array('data' => 'Date', 'header' => TRUE),
+      array('data' => '#', 'header' => TRUE),
+      array('data' => '$', 'header' => TRUE),
       array('data' => '#', 'header' => TRUE),
       array('data' => '$', 'header' => TRUE),
       array('data' => '#', 'header' => TRUE),
@@ -109,6 +112,8 @@ function fundraiser_sustainers_insights_dashboard($path_range = 'last-7-days') {
         number_format($snapshot->getFailedRescheduledValue() / 100, 2),
         $snapshot->getFailedAbandonedCharges(),
         number_format($snapshot->getFailedAbandonedValue() / 100, 2),
+        $snapshot->getFailedAutocanceledCharges(),
+        number_format($snapshot->getFailedAutocanceledValue() / 100, 2),
       ),
     );
 

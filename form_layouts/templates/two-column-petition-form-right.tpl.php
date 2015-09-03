@@ -31,7 +31,7 @@
       </div>
       <div id="petition-quick-sign" class="form-wrapper">
         <div class="form-wrapper-inner">
-          <?php print render($element['springboard_petition_quicksign']); ?>
+          <?php print render($element['sba_quicksign']); ?>
         </div>
       </div>
     </div>

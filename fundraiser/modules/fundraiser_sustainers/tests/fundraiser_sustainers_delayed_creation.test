@@ -1,0 +1,171 @@
+<?php
+
+/**
+ * @file
+ * Tests for creating a sustainer series on cron instead of immediately.
+ */
+
+class FundraiserSustainersDelayedCreationTestCase extends FundraiserSetup {
+
+  /**
+   * The donation form node.
+   *
+   * @var stdClass
+   */
+  protected $node;
+
+  /**
+   * The expiration date to use for the credit card.
+   *
+   * @var DateTime
+   */
+  protected $expiration;
+
+  /**
+   * The expected number of donations to exist in the created series.
+   *
+   * @var int
+   */
+  protected $expectedSeriesCount;
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Fundraiser Sustainers Delayed Series Creation',
+      'description' => 'Test the creation of the sustainer series on cron.',
+      'group' => 'Fundraiser Sustainers',
+    );
+  }
+
+  public function setUp($additional_modules = array()) {
+    $modules = array(
+      'fundraiser_sustainers',
+      'fundraiser_commerce',
+      'encrypt',
+    );
+    parent::setUp(array_merge($modules, $additional_modules));
+    $this->node = $this->createDonationForm();
+    $this->expectedSeriesCount = 11;
+    $this->expiration = new DateTime('now +10 months');
+  }
+
+  /**
+   * Test the immediate creation of a sustainer series.
+   */
+  public function testImmediateCreation() {
+    // Disable sustainer craation via cron.
+    variable_set('fundraiser_sustainers_create_series_cron', 0);
+
+    // Submit a donation form with recurring == true.
+    $this->submitRecurringDonationForm($this->node->nid, $this->expiration);
+
+    $master_did = $this->getMaxMasterDonationId();
+
+    // Assert that the correct number of donations was created.
+    $this->assertEqual(fundraiser_sustainers_count_donations_in_series($master_did), $this->expectedSeriesCount, $this->expectedSeriesCount . ' sustainers were created.');
+
+    // Assert that the master donation has the series complete flag.
+    // @todo This isn't working for me.
+    // $master_donation = fundraiser_donation_get_donation($master_did);
+    // $this->assertEqual($master_donation->data['fundraiser_sustainers_series_status'], FUNDRAISER_SUSTAINERS_SERIES_STATUS_COMPLETE, 'Master donation has a complete series status.');
+
+    // Assert that the queue is empty.
+    $queue = DrupalQueue::get('fundraiser_sustainers_create_series');
+    $this->assertEqual($queue->numberOfItems(), 0, 'Sustainer series queue is empty.');
+
+    // @todo Visit the edit page, assert the pending message does not appear.
+
+    // Run cron.
+    $this->cronRun();
+
+    // Assert that the same number of donations in the series exists.
+    $this->assertEqual(fundraiser_sustainers_count_donations_in_series($master_did), $this->expectedSeriesCount, 'Number of sustainer in series is still correct.');
+
+    // Assert that the master donation series flag is still correct.
+    // @todo This isn't working for me.
+    // $master_donation = fundraiser_donation_get_donation($master_did);
+    // $this->assertEqual($master_donation->data['fundraiser_sustainers_series_status'], FUNDRAISER_SUSTAINERS_SERIES_STATUS_COMPLETE, 'Master donation has a complete series status.');
+
+    // @todo Visit the edit page, assert that the pending message does not appear.
+
+    // Assert that the queue is still empty.
+    $queue = DrupalQueue::get('fundraiser_sustainers_create_series');
+    $this->assertEqual($queue->numberOfItems(), 0, 'Sustainer series queue is empty.');
+  }
+
+  /**
+   * Test the delayed creation of a sustainer series.
+   */
+  public function testDelayedCreation() {
+    // Enable sustainer creation via cron.
+    variable_set('fundraiser_sustainers_create_series_cron', 1);
+
+    // Submit a donation form with recurring == true.
+    $this->submitRecurringDonationForm($this->node->nid, $this->expiration);
+
+    $master_did = $this->getMaxMasterDonationId();
+
+    // Assert that one donation/order was created.
+    $this->assertEqual(fundraiser_sustainers_count_donations_in_series($master_did), 1, 'Only one sustainer was created.');
+
+    // Assert that that donation has the pending create flag.
+    // @todo This isn't working for me.
+    // $master_donation = fundraiser_donation_get_donation($master_did);
+    // $this->assertEqual($master_donation->data['fundraiser_sustainers_series_status'], FUNDRAISER_SUSTAINERS_SERIES_STATUS_PENDING, 'Master donation has a complete series status.');
+
+    // Assert that the queue includes that donation did.
+    $queue = DrupalQueue::get('fundraiser_sustainers_create_series');
+    $this->assertEqual($queue->numberOfItems(), 1, 'Sustainer series queue has one donation ID.');
+    $item = $queue->claimItem();
+    // Assert item data has the master did.
+    $this->assertEqual($item->data['did'], $master_did, 'The donation ID in the queue matches the master donation ID.');
+    $queue->releaseItem($item);
+
+    // @todo Visit the edit page. assert the pending message exists.
+
+    // Run cron.
+    $this->cronRun();
+
+    // Assert that the right number of donation/orders is created.
+    $this->assertEqual(fundraiser_sustainers_count_donations_in_series($master_did), $this->expectedSeriesCount, $this->expectedSeriesCount . ' sustainers now exist in the series.');
+
+    // Assert that the master donation has the complete creater flag.
+    // @todo This isn't working for me.
+    // $master_donation = fundraiser_donation_get_donation($master_did);
+    // $this->assertEqual($master_donation->data['fundraiser_sustainers_series_status'], FUNDRAISER_SUSTAINERS_SERIES_STATUS_COMPLETE, 'Master donation has a complete series status.');
+
+    // Assert that the queue is empty.
+    $queue = DrupalQueue::get('fundraiser_sustainers_create_series');
+    $this->assertEqual($queue->numberOfItems(), 0, 'Sustainer series queue is empty.');
+
+    // @todo Visit the edit page, assert the pending message doesn't appear.
+
+  }
+
+  /**
+   * Fill out a donation form to create a recurring donation series.
+   *
+   * @param int $nid
+   *   Node ID of the donation form.
+   * @param DateTime $expiration
+   *   The expiration date.
+   */
+  protected function submitRecurringDonationForm($nid, DateTime $expiration) {
+    $post_config = array(
+      'submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_month]' => $expiration->format('n'),
+      'submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_year]' => $expiration->format('Y'),
+      'submitted[payment_information][recurs_monthly][recurs]' => 'recurs',
+    );
+    $this->submitDonation($nid, $post_config);
+  }
+
+  /**
+   * Get the highest master donation ID.
+   *
+   * @return int|bool
+   *   The donation ID of the most recent master donation created.
+   */
+  protected function getMaxMasterDonationId() {
+    return db_query("SELECT MAX(master_did) FROM {fundraiser_sustainers}")->fetchField();
+  }
+
+}

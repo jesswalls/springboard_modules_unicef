@@ -1,0 +1,121 @@
+<?php
+/**
+ * @file
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function sba_quicksign_schema() {
+  $schema['sba_quicksign'] = array(
+    'description' => 'Track nodes that have enabled quicksign.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'The node',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'quicksign_enabled' => array(
+        'description' => 'Boolean, if quicksign is enabled',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'form_label' => array(
+        'description' => 'quicksign form label',
+        'type' => 'varchar',
+        'length' => 255,
+      ),
+      'form_description' => array(
+        'description' => 'Additional description text.',
+        'type' => 'text',
+      ),
+      'form_description_format' => array(
+        'description' => 'Description text format.',
+        'type' => 'varchar',
+        'length' => 255,
+      ),
+      'submit_button_text' => array(
+        'description' => 'Submit button text.',
+        'type' => 'varchar',
+        'length' => 255,
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+  $schema['sba_quicksign_submissions'] = array(
+    'description' => 'Log quicksign submissions.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'webform node id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'sid' => array(
+        'description' => 'webform submission id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'description' => 'time submission was created',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('sid'),
+  );
+  return $schema;
+}
+
+/**
+ * Implements hook_update_N().
+ */
+
+/**
+ * Move data from petition quicksign to advocacy quicksign.
+ */
+function sba_quicksign_update_7001() {
+
+  if(db_table_exists('springboard_quicksign')) {
+    $result = db_query('SELECT * from {springboard_quicksign}');
+    foreach ($result as $row) {
+      $record = array(
+        'nid' => $row->nid,
+        'quicksign_enabled' => $row->quicksign_enabled,
+        'form_label' => $row->form_label,
+        'form_description' => $row->form_description['value'],
+        'form_description_format' => $row->form_description_format,
+        'submit_button_text' => $row->submit_button_text,
+      );
+      db_insert('sba_quicksign')->fields($record)->execute();
+    }
+  }
+
+  if(db_table_exists('springboard_quicksign_submissions')) {
+    $result = db_query('SELECT * from {springboard_quicksign_submissions}');
+    foreach ($result as $row) {
+      $record = array(
+        'sid' => $row->sid,
+        'nid' => $row->nid,
+        'created' => $row->created,
+      );
+      db_insert('sba_quicksign_submissions')->fields($record)->execute();
+    }
+  }
+
+  if (module_exists('springboard_petition_quicksign')) {
+    module_disable(array('springboard_petition_quicksign'));
+  }
+}
+
+

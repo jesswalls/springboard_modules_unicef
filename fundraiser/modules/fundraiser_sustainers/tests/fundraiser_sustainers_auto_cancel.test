@@ -1,0 +1,101 @@
+<?php
+/**
+ * Tests the functionality of deleting consecutively failed fundraiser sustainers.
+ */
+class FundraiserSustainersAutoCancelTestCase extends FundraiserSetup {
+  // Fake donation ID so we can cheat on creating sustainers.
+  protected $nextDid = 1;
+
+  // Fake master donation ID.
+  protected $masterDid = 1;
+
+  /**
+   * Implements getInfo(). Declares this test class to fundraiser testing.
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'Fundraiser sustainers auto cancel',
+      'description' => 'Tests auto cancellation of sustainers which fail payment processing consecutively.',
+      'group' => 'Fundraiser Sustainers',
+    );
+  }
+
+  /**
+   * Implements setUp().
+   */
+  public function setUp($additional_modules = array()) {
+    // Call the parent to set all of the base modules up.
+    $additional_modules = array(
+      'fundraiser_sustainers',
+    );
+    parent::setUp($additional_modules);
+
+    // Make sure our autocancel settings are enabled.
+    variable_set('fundraiser_recurring_autocancel_enabled', 1);
+    variable_set('fundraiser_recurring_autocancel_threshold', 3);
+  }
+
+  /**
+   * Inserts a sustainer and processes next in the series as failed.
+   */
+  public function testConseutiveFailedRecurring() {
+
+    // Create a recurring donation.
+    $master_did = $this->fundraiserSustainerCreateRecurringDonation();
+
+    // Create a series of previously failed sustainer payments.
+    $this->insertFailedSustainerRecords($master_did);
+
+    // Process the next scheduled sustainer as failed. This triggers our fundraiser_sustainers_donation_fail hook.
+    $donation = fundraiser_donation_get_donation(4, TRUE);
+    // Set gateway message to prevent exception error during testing.
+    $donation->result['message'] = 'Auto cancel simpletest.';
+    // Manually fail the donation.
+    fundraiser_sustainers_donation_fail($donation);
+  }
+
+  /**
+   * Helper function to create a series of recurring donations.
+   *
+   * @return int
+   *   The donation ID that was just saved.
+   */
+  private function fundraiserSustainerCreateRecurringDonation() {
+    // Create our user.
+    $created_user = $this->createFundraiserUser();
+    $this->drupalLogin($created_user);
+    // Create a node.
+    $node = $this->createDonationForm();
+    // Post to the node.
+    $month = date('n', strtotime('+1 year'));
+    $year = date('Y', strtotime('+1 year'));
+    $post['submitted[payment_information][recurs_monthly][recurs]'] = 'recurs';
+    $post['submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_month]'] = $month;
+    $post['submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_year]'] = $year;
+    $post['submitted[donor_information][mail]'] = $created_user->mail;
+
+    $this->submitDonation($node->nid, $post);
+    // Get the master did.
+    $donations = _fundraiser_get_donations();
+    $master_did = '';
+    foreach ($donations as $donation) {
+      $master_did = $donation->did;
+      break;
+    }
+    return $master_did;
+  }
+
+  /**
+   * Helper function which updates last n number of sustainer attempts as failed.
+   *
+   */
+  protected function insertFailedSustainerRecords($master_did) {
+    // Set last n sustainer charge attempts to 'failed'.
+    $status = FUNDRAISER_SUSTAINERS_FAILED_STATUS;
+    db_query("UPDATE {fundraiser_sustainers}
+      SET gateway_resp = :status
+      WHERE master_did = :mdid
+      ORDER BY did ASC
+      LIMIT 3", array(':status' => $status, ':mdid' => $master_did));
+  }
+}

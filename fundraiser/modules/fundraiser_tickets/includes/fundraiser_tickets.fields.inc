@@ -905,7 +905,7 @@ function _fundraiser_tickets_default_fields_settings($type) {
       'bundle' => $type,
       'default_value' => NULL,
       'deleted' => '0',
-      'description' => '<strong>You may type either the form\'s <em>Title</em> or <em>Internal Name</em> when searching.</strong><br />Target donation forms <strong><em>must</em></strong> have an "other amount" field. Any required fields on target donation forms must also be required on this form.',
+      'description' => '<strong>You may type either the form\'s <em>Title</em> or <em>Internal Name</em> when searching.</strong><br />Target donation forms <strong><em>must</em></strong> have an "other amount" field and <strong><em>must</em></strong> have the same currency as this form. Any required fields on target donation forms must also be required on this form.',
       'display' => array(
         'default' => array(
           'label' => 'above',

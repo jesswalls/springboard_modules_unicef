@@ -53,30 +53,9 @@ function springboard_admin_admin_menu_output_alter(&$content) {
  * administration pages.
  */
 function springboard_admin_custom_theme() {
-  // Does the current user get SBUX (i.e., are the following checks relevant)?
-  if (springboard_admin_user_gets_sbux($GLOBALS['user'])) {
-    // If the springboard_backend theme is disabled, do nothing.
-    if (variable_get('springboard_theme_enable', 1) == 0) {
-      return;
-    }
-    // If the springboard_backend theme does not exist, we can do nothing.
-    $themes = list_themes();
-    if (!isset($themes['springboard_backend'])) {
-      return;
-    }
-    // If the page is using a page wrapper, do nothing.
-    if(module_exists('page_wrappers')) {
-      $wrapper = page_wrappers_check();
-      if(!empty($wrapper['wrapper'])) {
-        return;
-      }
-    }
-    // If either the current Drupal path or its SBUX alias begins with /springboard/, then the theme applies.
-    if (preg_match("|^springboard(\/.*)?|", $_GET['q'])
-      || preg_match("|^springboard(\/.*)?|", springboard_admin_build_admin_path('/' . $_GET['q'], 'path'))
-    ) {
-      return 'springboard_backend';
-    }
+  // Set the custom theme if the admin UI treatment should be applied.
+  if (_springboard_admin_apply_treatment($GLOBALS['user'])) {
+    return 'springboard_backend';
   }
 }
 
@@ -119,18 +98,28 @@ function springboard_admin_form_alter(&$form, &$form_state, $form_id) {
 
 /**
  * Implements hook_form_ID_alter().
- * views exposed form
+ *
+ * Alter the views exposed form for presentation in the admin UI.
  */
 function springboard_admin_form_views_exposed_form_alter(&$form, &$form_state, $form_id) {
+  // Check if admin UI treatment is applied.
+  if (!_springboard_admin_apply_treatment($GLOBALS['user'])) {
+    return;
+  }
 
-  if(isset($form['date_filter']) && is_object($form_state['view'])) {
-    $view = $form_state['view'];
-    
-    // Alter the date format for all views date filters.
+  $view = $form_state['view'];
+  // If this is an admin view and has the date filters make adjustments.
+  if (
+    in_array($view->name, _springboard_admin_views())
+    && isset($form['date_filter'])
+    && !empty($form['date_filter']['min'])
+    && !empty($form['date_filter']['max'])
+  ) {
+    // Alter the date format for views date filters.
     $form['date_filter']['min']['#date_format'] = 'n/j/Y';
     $form['date_filter']['max']['#date_format'] = 'n/j/Y';
 
-    // Define statements for various views date filters.
+    // Define labels for various views date filters.
     // This can't be done in the ui.
     switch ($view->name) {
       case "sbv_donations";
@@ -141,12 +130,22 @@ function springboard_admin_form_views_exposed_form_alter(&$form, &$form_state, $
         $form['date_filter']['min']['#title'] = 'Requested between';
         $form['date_filter']['max']['#title'] = 'and';
         break;
-      // Default last.
+      case "sbv_administrator_users";
+        $form['date_filter']['min']['#title'] = 'Created between';
+        $form['date_filter']['max']['#title'] = 'and';
+        break;
+      // Default will be the updated date.
       default;
-        $form['date_filter']['min']['#title'] = 'Published between';
+        $form['date_filter']['min']['#title'] = 'Last updated between';
         $form['date_filter']['max']['#title'] = 'and';
         break;
     }
+  }
+
+  // Add a simple js command to reset the form through ajax.
+  $submit_btn_id = $form['submit']['#id'];
+  if (!empty($submit_btn_id) && !empty($form['reset'])) {
+    $form['reset']['#attributes']['onclick'] = "javascript:jQuery(this.form).clearForm();jQuery(this.form).find('#" . $submit_btn_id . "').trigger('click');return false;";
   }
 }
 
@@ -194,11 +193,22 @@ function springboard_admin_form_springboard_admin_settings_alter(&$form, &$form_
     $roles = user_roles(TRUE, 'access springboard dashboard');
     $form['admin']['springboard_user_experience'] = array(
       '#type' => 'checkboxes',
-      '#title' => t('Springboard User Experience.'),
+      '#title' => t('Springboard User Experience'),
       '#description' => t('Choose which user roles will be given the Springboard User Experience. This includes redirecting to the Dashboard on login and after performing some administration functions.'),
       '#options' => $roles,
       '#default_value' => variable_get('springboard_user_experience', array_keys($roles)),
     );
+
+    // Field for selecting form types.
+    $form['admin']['springboard_admin_allowed_form_types'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Springboard Admin Allowed Forms'),
+      '#description' => t('Choose which form types are listed in the Springboard Admin pages. Menu items are controlled through the Drupal menu system.'),
+      '#options' => _springboard_admin_enabled_form_types(),
+      '#default_value' => variable_get('springboard_admin_allowed_form_types', array_keys(_springboard_admin_enabled_form_types())),
+    );
+
+    // Create arrays of content types.
     $node_types = node_type_get_types();
     $allowed_types = array();
     foreach ($node_types as $type) {
@@ -211,7 +221,7 @@ function springboard_admin_form_springboard_admin_settings_alter(&$form, &$form_
     }
     $form['admin']['springboard_asset_library'] = array(
       '#type' => 'checkboxes',
-      '#title' => t('Springboard Asset Library.'),
+      '#title' => t('Springboard Admin Asset Library'),
       '#description' => t('Choose which content types are listed in the Springboard Asset Library.'),
       '#options' => $allowed_types,
       '#default_value' => variable_get('springboard_asset_library', array('page_wrapper', 'email_wrapper')),
@@ -497,6 +507,10 @@ function springboard_admin_theme($existing, $type, $theme, $path) {
       'variables' => array('tables' => array(), 'types' => array()),
       'template' => drupal_get_path('theme', $theme) . '/templates/springboard-admin-asset-page',
     ),
+    'springboard_admin_home_link' => array(
+      'variables' => array('springboard_link' => ''),
+      'template' => drupal_get_path('theme', $theme) . '/templates/springboard-admin-home-link',
+    ),
   );
 }
 
@@ -538,6 +552,43 @@ function springboard_admin_user_login(&$edit, $account) {
       $edit['redirect'] = 'springboard';
     }
   }
+}
+
+/**
+ * Implements hook_page_build().
+ *
+ * Add a link and icon for admins to return to the Springboard admin homepage.
+ */
+function springboard_admin_page_build(&$page) {
+  // Do not include this if admin menu is installed.
+  if (module_exists('admin_menu')) {
+    return;
+  }
+
+  global $user;
+  // Do not include if the user doesn't have access to the Springboard admin.
+  if (!springboard_admin_user_gets_sbux($user)) {
+    return;
+  }
+
+  // If either the current Drupal path or its SBUX alias begins with /springboard/ do not add this.
+  if (preg_match("|^springboard(\/.*)?|", $_GET['q'])
+    || preg_match("|^springboard(\/.*)?|", springboard_admin_build_admin_path('/' . $_GET['q'], 'path'))
+  ) {
+    return;
+  }
+
+  $path = drupal_get_path('module', 'springboard_admin');
+
+  // Create a renderable array for the admin home link.
+  $page['page_bottom']['springboard_admin'] = array(
+    '#attached' => array(
+      'css' => array($path . '/css/springboard-admin.home-link.css'),
+      'js' => array($path . '/js/springboard-admin.home-link.js'),
+    ),
+    '#theme' => 'springboard_admin_home_link',
+    '#springboard_link' => l('Springboard', 'springboard'),
+  );
 }
 
 /**
@@ -692,7 +743,18 @@ function springboard_admin_forms_page($springboard_type) {
         }
       break;
       case 'webform_user':
-        if (_webform_user_is_webform_user_node_type($type->type) && !fundraiser_is_donation_type($type->type)) {
+        if (module_exists('springboard_advocacy')) {
+          $action = springboard_advocacy_is_action_type($type->type);
+        }
+        if (module_exists('springboard_petition')) {
+          $petition = springboard_petition_is_petition_type($type->type);
+        }
+        // Only create the item if the node type uses Webform User but not Fundraiser or Advocacy.
+        if ($type && _webform_user_is_webform_user_node_type($type->type)
+          && !fundraiser_is_donation_type($type->type)
+          && empty($action)
+          && empty($petition)
+        ) {
           $display_types[$type->type] = $type;
         }
       break;
@@ -703,6 +765,15 @@ function springboard_admin_forms_page($springboard_type) {
       break;
     }
   }
+
+  // Allow modules to alter the types to be displayed.
+  drupal_alter('springboard_admin_form_page_types', $display_types, $springboard_type);
+
+  // If there are no node types to display just show this text.
+  if (empty($display_types)) {
+    return t("You haven't yet created any content types for this kind of webform.");
+  }
+
   // Render the views tables for the appropriate set of content types.
   foreach ($display_types as $type) {
     $view = views_get_view('sbv_forms');
@@ -711,11 +782,25 @@ function springboard_admin_forms_page($springboard_type) {
     $view -> pre_execute();
     $view -> execute();
 
-    if ($view && $view -> access($display) && !empty($view -> result)) {
+    $tables[$type->type] = '';
+    if ($view && $view -> access($display)) {
       $tables[$type->type] = $view -> render();
     }
   }
   return theme('springboard_admin_forms_page', array('types' => $display_types, 'springboard_type' => $springboard_type, 'tables' => $tables));
+}
+
+/**
+ * Implements hook_springboard_admin_form_page_types_alter().
+ */
+function springboard_admin_springboard_admin_form_page_types_alter(&$display_types, $springboard_type) {
+  // Remove types not checked to display in the settings.
+  $allowed_types = array_filter(variable_get('springboard_admin_allowed_form_types', array_keys(_springboard_admin_enabled_form_types())));
+  foreach ($display_types as $type => $info) {
+    if (!in_array($type, $allowed_types)) {
+      unset($display_types[$type]);
+    }
+  }
 }
 
 /**
@@ -1284,4 +1369,106 @@ function springboard_admin_user_gets_sbux($account) {
     }
   }
   return $result[$account->uid];
+}
+
+/**
+ * Determine if the admin UI treatment should be applied to this user and request.
+ *
+ * @param $user Object
+ *   Drupal user object.
+ */
+function _springboard_admin_apply_treatment($user) {
+  // Cache the apply value.
+  $apply = &drupal_static(__FUNCTION__);
+
+  if (isset($apply)) {
+    return $apply;
+  }
+
+  // First check if the current user has access to the admin UI.
+  if (springboard_admin_user_gets_sbux($user)) {
+    // Check that the_backend theme is enabled.
+    if (variable_get('springboard_theme_enable', 1) == 0) {
+      $apply = FALSE;
+    }
+
+    // Check that the springboard_backend theme exist.
+    $themes = list_themes();
+    if (!isset($themes['springboard_backend'])) {
+      $apply = FALSE;
+    }
+
+    // Check if the page is using a page wrapper.
+    // TODO: move this into the page wrapper module.
+    if(module_exists('page_wrappers')) {
+      $wrapper = page_wrappers_check();
+      if(!empty($wrapper['wrapper'])) {
+        $apply = FALSE;
+      }
+    }
+
+    // If either the current Drupal path or its SBUX alias begins with /springboard/, then the treatment applies.
+    if (
+      $apply !== FALSE
+      && (
+        preg_match("|^springboard(\/.*)?|", $_GET['q'])
+        || preg_match("|^springboard(\/.*)?|", springboard_admin_build_admin_path('/' . $_GET['q'], 'path'))
+      )
+    ) {
+      $apply = TRUE;
+    }
+  }
+  else {
+    $apply = FALSE;
+  }
+
+  // Allow other modules to control if the UI applies.
+  drupal_alter('springboard_admin_apply_treatment', $apply);
+
+  return $apply;
+}
+
+/**
+ * Returns an array of views that will be presented in the admin UI.
+ */
+function _springboard_admin_views() {
+  $view_names = array(
+    'sbv_administrator_users',
+    'sbv_assets',
+    'sbv_contacts',
+    'sbv_dblog',
+    'sbv_donations',
+    'sbv_email_templates',
+    'sbv_forms',
+    'sbv_gateway_settings_log',
+    'sbv_notes',
+    'sbv_page_wrappers',
+    'sbv_sf_batch_items',
+    'sbv_sf_batches',
+    'sbv_sf_queue',
+    'sbv_soap_errors',
+    'p2p_user_approval',
+  );
+
+  // Allow modules to add views names to the array.
+  drupal_alter('springboard_admin_views', $view_names);
+
+  return $view_names;
+}
+
+/**
+ * Return an array of Springboard enabled form types.
+ */
+function _springboard_admin_enabled_form_types() {
+  $node_types = node_type_get_types();
+  $sb_types = array();
+
+  // Include webform user and fundraiser enabled forms.
+  foreach ($node_types as $type) {
+    if (_webform_user_is_webform_user_node_type($type->type) || fundraiser_is_donation_type($type->type)) {
+      $sb_types[$type->type] = $type->name;
+    }
+  }
+
+  return $sb_types;
 }

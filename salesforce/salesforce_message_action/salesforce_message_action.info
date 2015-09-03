@@ -1,0 +1,11 @@
+name = Salesforce Message Action
+description = Salesforce integration support for advocacy message actions.
+package = Salesforce
+core = 7.x
+version = 7.x-4.x-dev
+
+dependencies[] = libraries
+dependencies[] = salesforce
+dependencies[] = salesforce_soap
+dependencies[] = salesforce_sync
+dependencies[] = springboard_advocacy

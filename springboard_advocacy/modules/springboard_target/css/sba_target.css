@@ -1,0 +1,169 @@
+.target-edit-form {
+    background: #fcfcfc;
+    padding: 1em;
+    border-width: 1px 1px 2px;
+    border-style: solid;
+    border-color: #DFDFDF #DFDFDF #EAEAEA;
+    border-image: none;;
+    border-radius: 6px;
+
+}
+.target-edit-form .target-row {
+    margin-top:30px;
+    background: #f5f5f5;
+    border: 1px dotted #ccc;
+    padding-left: 2em;
+    padding-right: 0;
+    padding-top:0.5em;
+    position: relative;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+.target-edit-form .target-row:after,
+.target-edit-form:after{
+    clear: both;
+    content: "";
+    display: table;
+}
+
+.target-edit-form .target-row div.form-item {
+    /*-webkit-box-sizing: border-box;*/
+    /*-moz-box-sizing: border-box;*/
+    /*box-sizing: border-box;*/
+    display: inline-block;
+    margin-right:1em;
+
+}
+
+.target-edit-form .target-row div.form-item input,
+.target-edit-form .target-row div.form-item select {
+    margin:0;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    padding:0.5em ;
+    height: auto;
+}
+
+
+
+.target-edit-form .target-row-two,
+.target-edit-form .target-row-three,
+.target-edit-form .target-row-four,
+input#edit-submit {
+    clear:left;
+    display: block;
+}
+
+input#edit-submit {
+    float: right;
+}
+
+
+
+div.form-item-gender,
+div.form-item-salutation,
+.form-item-fax-area-code,
+.form-item-area-code
+{
+    width: 15%;
+
+}
+
+div.form-item-gender select,
+div.form-item-salutation select {
+    width: 100%;
+}
+.form-item-fax-area-code input,
+.form-item-area-code input {
+    width: 93%;
+}
+
+.form-item-first-name,
+.form-item-last-name,
+.form-item-organization,
+.form-item-title,
+.form-item-phone,
+.form-item-fax,
+.form-item-ext {
+    width: 40%;
+}
+
+.form-item-first-name input,
+.form-item-last-name input,
+.form-item-organization input,
+.form-item-title input,
+.form-item-phone input,
+.form-item-fax input,
+.form-item-ext input{
+    width: 100%;
+}
+
+.target-edit-form .target-row div.form-item.form-item-street,
+.target-edit-form .target-row div.form-item.form-item-city,
+.form-item-street-2,
+#edit-row-four .form-item{
+    width: 48%;
+}
+
+.form-item-street input,
+.form-item-street-2 input,
+.form-item-city input,
+#edit-row-four input{
+    width: 100%;
+}
+
+.form-item-state,
+.form-item-zip-code {
+    width: 23.5%;
+}
+
+.form-item-state select,
+.form-item-zip-code input{
+    width: 98%;
+}
+
+ input#edit-submit.target-add {
+    width: 220px;
+    padding: 12px 6px;
+    border-radius: 4px;
+    border: none;
+    background: #247AAD;
+    text-align: center;
+    color: #FFF;
+    margin-top: 20px;
+    font-size: 19px;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+input#edit-submit.target-add:hover {
+    background: #1E72A3
+}
+
+
+
+@media only screen and (min-width: 320px) and (max-width: 979px) {
+    .target-edit-form .target-row {
+        padding-right: 2em;
+    }
+
+    .target-edit-form .target-row div.form-item {
+        float: left;
+        clear: left;
+        width: 100%!important;
+    }
+    div[id*="edit-row"] input,
+    .target-edit-form .target-row div.form-item select {
+        width: 100%!important;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+        padding:0.5em ;
+        height: auto;
+    }
+
+}
+

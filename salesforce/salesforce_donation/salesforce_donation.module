@@ -74,6 +74,7 @@ function salesforce_donation_settings($form, &$form_state) {
     $form['sf_donation_stages']['sf_donation_' . $stage] = array(
       '#title' => t('@stage Stage:', array('@stage' => $stage)),
       '#type' => 'select',
+      '#multiple' => TRUE,
       '#options' => $available_statuses,
       '#default_value' => isset($mapped_stages[$stage]) ? $mapped_stages[$stage] : '',
     );
@@ -295,9 +296,13 @@ function salesforce_donation_fundraiser_sustainers_donation_fail($donation) {
        $stage = $salesforce_name;
     }
   }
+
+  // If a failed stage is mapped, re-queue the failed transaction for export.
   if (isset($stage)) {
+    // Reload donation to be sure to get the most recent data.
+    $donation = fundraiser_donation_get_donation($donation->did, TRUE);
     $donation->recurring->sf_stagename = $stage;
-    // If a failed stage is mapped, re-queue the failed transaction for export.
+
     salesforce_genmap_send_object_to_queue('salesforce_donation', 'update', $donation->node, $donation->did, $donation, 'donation');
   }
   else {
@@ -305,6 +310,16 @@ function salesforce_donation_fundraiser_sustainers_donation_fail($donation) {
     watchdog('salesforce_donation', 'Sustainer payment failure for donation @id will not be exported
       to Salesforce because the failed order status has not been mapped to an appropriate Opportunity stage. If you wish to export failed sustainer payments you need to add a failed stage in Salesforce and map it on the Salesforce donation settings page.', array('@id' => $donation->did), WATCHDOG_DEBUG, l('Salesforce donation settings', 'admin/config/salesforce/salesforce-donation'));
   }
+}
+
+/**
+ * Implements hook_fundraiser_sustainers_auto_cancel().
+ *
+ * Recurring donations that are auto canceled after consecutive failures should
+ * be exported to Salesforce with their new status.
+ */
+function salesforce_donation_fundraiser_sustainers_auto_cancel($donation) {
+  salesforce_donation_fundraiser_donation_cancel($donation);
 }
 
 /**
@@ -505,6 +520,14 @@ function salesforce_donation_salesforce_genmap_map_fields(stdClass $donation, En
         $sf_field = $map->field_map['salesforce_donation_map'][$key];
         $fields[$sf_field] = $value;
       }
+    }
+  }
+
+  // Reset the currency to just the code.
+  if (isset($map->field_map['salesforce_donation_map']['currency'])) {
+    if (isset($donation->donation['currency'])) {
+      $sf_field = $map->field_map['salesforce_donation_map']['currency'];
+      $fields[$sf_field] = $donation->donation['currency']['code'];
     }
   }
 

@@ -1962,7 +1962,7 @@ function springboard_admin_config_donation_form_add($form, $form_state, $email_n
     'in, feugiat ac, molestie eget, wisi.';
   $node->body[LANGUAGE_NONE][0]['format'] = 'filtered_html';
   $node->webform = array(
-      'confirmation' => 'Thank you [donation:first_name] [donation:last_name] for your donation of [donation:amount] USD.' . "\n" .
+      'confirmation' => 'Thank you [donation:first_name] [donation:last_name] for your donation of [donation:currency:symbol][donation:amount].' . "\n" .
       "\n" .
       'The email address we have for you is: [donation:mail]' . "\n" .
       "\n" .
@@ -2062,13 +2062,13 @@ function springboard_admin_config_donation_form_add($form, $form_state, $email_n
       'eid' => 1,
       'tid' => $email_nid,
       'bcc_email' => '',
-      'html_message' => 'Thank you [donation:first_name] [donation:last_name] for your donation of [donation:amount] USD.' . "\n" .
+      'html_message' => 'Thank you [donation:first_name] [donation:last_name] for your donation of [donation:currency:symbol][donation:amount].' . "\n" .
       "\n" .
       'The email address we have for you is: [donation:mail]' . "\n" .
       "\n" .
       'Your card ending in [donation:card_number], expires [donation:card_expiration_month] / [donation:card_expiration_year]',
       'html_message_format' => 'filtered_html',
-      'text_message' => 'Thank you [donation:first_name] [donation:last_name] for your donation of [donation:amount] USD.' . "\n" .
+      'text_message' => 'Thank you [donation:first_name] [donation:last_name] for your donation of [donation:currency:symbol][donation:amount].' . "\n" .
       "\n" .
       'The email address we have for you is: [donation:mail]' . "\n" .
       "\n" .

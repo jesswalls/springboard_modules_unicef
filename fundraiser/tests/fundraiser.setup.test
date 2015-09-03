@@ -392,7 +392,7 @@ abstract class FundraiserSetup extends DrupalWebTestCase {
       'in, feugiat ac, molestie eget, wisi.';
     $node->body[LANGUAGE_NONE][0]['format'] = 'filtered_html';
     $node->webform = array(
-      'confirmation' => 'Thank you [donation:first_name] [donation:last_name] for your donation of [donation:amount] USD.' . "\n" .
+      'confirmation' => 'Thank you [donation:first_name] [donation:last_name] for your donation of [donation:currency:symbol][donation:amount].' . "\n" .
         "\n" .
         'The email address we have for you is: [donation:mail]' . "\n" .
         "\n" .
@@ -501,6 +501,24 @@ abstract class FundraiserSetup extends DrupalWebTestCase {
     }
     $user = $this->drupalCreateUser($user);
     return $user;
+  }
+
+  /**
+   * Submit a recurring donation to a donation form.
+   *
+   * @param int $nid
+   *   The node ID of the donation form.
+   * @param \DateTime $expiration
+   *   The expiration date of the credit card.
+   */
+  protected function submitRecurringDonation($nid, DateTime $expiration) {
+    $post_config = array(
+      'submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_month]' => $expiration->format('n'),
+      'submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_year]' => $expiration->format('Y'),
+      'submitted[payment_information][recurs_monthly][recurs]' => 'recurs',
+    );
+
+    $this->submitDonation($nid, $post_config);
   }
 
   /**

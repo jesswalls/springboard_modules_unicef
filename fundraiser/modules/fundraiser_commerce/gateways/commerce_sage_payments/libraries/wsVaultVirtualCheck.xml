@@ -1,0 +1,1538 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" targetNamespace="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck">
+      <s:element name="VIRTUAL_CHECK_PPD_SALE">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="M_KEY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ORIGINATOR_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FIRST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_MIDDLE_INITIAL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_LAST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SUFFIX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_COUNTRY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_EMAIL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="GUID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_AMT" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_SHIPPING" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_TAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_ORDERNUM" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_TELEPHONE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_COUNTRY" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_PPD_SALEResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="VIRTUAL_CHECK_PPD_SALEResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:element ref="s:schema" />
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_PPD_CREDIT">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="M_KEY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ORIGINATOR_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FIRST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_MIDDLE_INITIAL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_LAST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SUFFIX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_COUNTRY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_EMAIL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="GUID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_AMT" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_SHIPPING" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_TAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_ORDERNUM" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_TELEPHONE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_COUNTRY" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_PPD_CREDITResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="VIRTUAL_CHECK_PPD_CREDITResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:element ref="s:schema" />
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_CCD_SALE">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="M_KEY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ORIGINATOR_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_EIN" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FIRST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_MIDDLE_INITIAL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_LAST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SUFFIX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_COUNTRY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_EMAIL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="GUID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_AMT" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_SHIPPING" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_TAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_ORDERNUM" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_TELEPHONE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_COUNTRY" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_CCD_SALEResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="VIRTUAL_CHECK_CCD_SALEResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:element ref="s:schema" />
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_CCD_CREDIT">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="M_KEY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ORIGINATOR_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_EIN" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FIRST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_MIDDLE_INITIAL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_LAST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SUFFIX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_COUNTRY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_EMAIL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="GUID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_AMT" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_SHIPPING" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_TAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_ORDERNUM" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_TELEPHONE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_COUNTRY" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_CCD_CREDITResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="VIRTUAL_CHECK_CCD_CREDITResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:element ref="s:schema" />
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_WEB_SALE">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="M_KEY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ORIGINATOR_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FIRST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_MIDDLE_INITIAL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_LAST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SUFFIX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_COUNTRY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_EMAIL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="GUID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_AMT" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_SHIPPING" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_TAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_ORDERNUM" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_TELEPHONE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_COUNTRY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SSN" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_DL_STATE_CODE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_DL_NUMBER" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_DOB" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_WEB_SALEResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="VIRTUAL_CHECK_WEB_SALEResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:element ref="s:schema" />
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_RCK_SALE">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="M_KEY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ORIGINATOR_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FIRST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_MIDDLE_INITIAL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_LAST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SUFFIX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_COUNTRY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_EMAIL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="GUID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_AMT" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_SHIPPING" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_TAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_ORDERNUM" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_TELEPHONE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_COUNTRY" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_RCK_SALEResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="VIRTUAL_CHECK_RCK_SALEResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:element ref="s:schema" />
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_ARC_SALE">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="M_KEY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ORIGINATOR_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FIRST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_MIDDLE_INITIAL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_LAST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SUFFIX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_COUNTRY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_EMAIL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="GUID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_CHECK_NUMBER" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_AMT" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_SHIPPING" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_TAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_ORDERNUM" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_TELEPHONE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_COUNTRY" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_ARC_SALEResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="VIRTUAL_CHECK_ARC_SALEResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:element ref="s:schema" />
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_TEL_SALE">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="M_KEY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ORIGINATOR_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FIRST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_MIDDLE_INITIAL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_LAST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SUFFIX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_COUNTRY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_EMAIL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="GUID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_AMT" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_SHIPPING" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_TAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_ORDERNUM" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_TELEPHONE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_COUNTRY" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_TEL_SALEResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="VIRTUAL_CHECK_TEL_SALEResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:element ref="s:schema" />
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="M_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="M_KEY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ORIGINATOR_ID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FIRST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_MIDDLE_INITIAL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_LAST_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SUFFIX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_COUNTRY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_EMAIL" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="GUID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_AMT" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_SHIPPING" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_TAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="T_ORDERNUM" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_TELEPHONE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_FAX" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_NAME" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ADDRESS" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_CITY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_STATE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_ZIP" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SHIP_COUNTRY" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_SSN" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_DL_STATE_CODE" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_DL_NUMBER" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="C_DOB" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:element ref="s:schema" />
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="DataSet" nillable="true">
+        <s:complexType>
+          <s:sequence>
+            <s:element ref="s:schema" />
+            <s:any />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALESoapIn">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_PPD_SALE" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALESoapOut">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_PPD_SALEResponse" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_CREDITSoapIn">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_PPD_CREDIT" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_CREDITSoapOut">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_PPD_CREDITResponse" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_SALESoapIn">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_CCD_SALE" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_SALESoapOut">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_CCD_SALEResponse" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_CREDITSoapIn">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_CCD_CREDIT" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_CREDITSoapOut">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_CCD_CREDITResponse" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_WEB_SALESoapIn">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_WEB_SALE" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_WEB_SALESoapOut">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_WEB_SALEResponse" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_RCK_SALESoapIn">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_RCK_SALE" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_RCK_SALESoapOut">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_RCK_SALEResponse" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_ARC_SALESoapIn">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_ARC_SALE" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_ARC_SALESoapOut">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_ARC_SALEResponse" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_TEL_SALESoapIn">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_TEL_SALE" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_TEL_SALESoapOut">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_TEL_SALEResponse" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONSoapIn">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONSoapOut">
+    <wsdl:part name="parameters" element="tns:VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONResponse" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALEHttpGetIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALEHttpGetOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_CREDITHttpGetIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_CREDITHttpGetOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_SALEHttpGetIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_EIN" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_SALEHttpGetOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_CREDITHttpGetIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_EIN" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_CREDITHttpGetOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_WEB_SALEHttpGetIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+    <wsdl:part name="C_SSN" type="s:string" />
+    <wsdl:part name="C_DL_STATE_CODE" type="s:string" />
+    <wsdl:part name="C_DL_NUMBER" type="s:string" />
+    <wsdl:part name="C_DOB" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_WEB_SALEHttpGetOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_RCK_SALEHttpGetIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_RCK_SALEHttpGetOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_ARC_SALEHttpGetIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="C_CHECK_NUMBER" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_ARC_SALEHttpGetOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_TEL_SALEHttpGetIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_TEL_SALEHttpGetOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONHttpGetIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+    <wsdl:part name="C_SSN" type="s:string" />
+    <wsdl:part name="C_DL_STATE_CODE" type="s:string" />
+    <wsdl:part name="C_DL_NUMBER" type="s:string" />
+    <wsdl:part name="C_DOB" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONHttpGetOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALEHttpPostIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALEHttpPostOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_CREDITHttpPostIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_CREDITHttpPostOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_SALEHttpPostIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_EIN" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_SALEHttpPostOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_CREDITHttpPostIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_EIN" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_CCD_CREDITHttpPostOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_WEB_SALEHttpPostIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+    <wsdl:part name="C_SSN" type="s:string" />
+    <wsdl:part name="C_DL_STATE_CODE" type="s:string" />
+    <wsdl:part name="C_DL_NUMBER" type="s:string" />
+    <wsdl:part name="C_DOB" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_WEB_SALEHttpPostOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_RCK_SALEHttpPostIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_RCK_SALEHttpPostOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_ARC_SALEHttpPostIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="C_CHECK_NUMBER" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_ARC_SALEHttpPostOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_TEL_SALEHttpPostIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_TEL_SALEHttpPostOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONHttpPostIn">
+    <wsdl:part name="M_ID" type="s:string" />
+    <wsdl:part name="M_KEY" type="s:string" />
+    <wsdl:part name="C_ORIGINATOR_ID" type="s:string" />
+    <wsdl:part name="C_FIRST_NAME" type="s:string" />
+    <wsdl:part name="C_MIDDLE_INITIAL" type="s:string" />
+    <wsdl:part name="C_LAST_NAME" type="s:string" />
+    <wsdl:part name="C_SUFFIX" type="s:string" />
+    <wsdl:part name="C_ADDRESS" type="s:string" />
+    <wsdl:part name="C_CITY" type="s:string" />
+    <wsdl:part name="C_STATE" type="s:string" />
+    <wsdl:part name="C_ZIP" type="s:string" />
+    <wsdl:part name="C_COUNTRY" type="s:string" />
+    <wsdl:part name="C_EMAIL" type="s:string" />
+    <wsdl:part name="GUID" type="s:string" />
+    <wsdl:part name="T_AMT" type="s:string" />
+    <wsdl:part name="T_SHIPPING" type="s:string" />
+    <wsdl:part name="T_TAX" type="s:string" />
+    <wsdl:part name="T_ORDERNUM" type="s:string" />
+    <wsdl:part name="C_TELEPHONE" type="s:string" />
+    <wsdl:part name="C_FAX" type="s:string" />
+    <wsdl:part name="C_SHIP_NAME" type="s:string" />
+    <wsdl:part name="C_SHIP_ADDRESS" type="s:string" />
+    <wsdl:part name="C_SHIP_CITY" type="s:string" />
+    <wsdl:part name="C_SHIP_STATE" type="s:string" />
+    <wsdl:part name="C_SHIP_ZIP" type="s:string" />
+    <wsdl:part name="C_SHIP_COUNTRY" type="s:string" />
+    <wsdl:part name="C_SSN" type="s:string" />
+    <wsdl:part name="C_DL_STATE_CODE" type="s:string" />
+    <wsdl:part name="C_DL_NUMBER" type="s:string" />
+    <wsdl:part name="C_DOB" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONHttpPostOut">
+    <wsdl:part name="Body" element="tns:DataSet" />
+  </wsdl:message>
+  <wsdl:portType name="wsVaultVirtualCheckSoap">
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_PPD_SALESoapIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_PPD_SALESoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_CREDIT">
+      <wsdl:input message="tns:VIRTUAL_CHECK_PPD_CREDITSoapIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_PPD_CREDITSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_CCD_SALESoapIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_CCD_SALESoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_CREDIT">
+      <wsdl:input message="tns:VIRTUAL_CHECK_CCD_CREDITSoapIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_CCD_CREDITSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_WEB_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_WEB_SALESoapIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_WEB_SALESoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_RCK_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_RCK_SALESoapIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_RCK_SALESoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_ARC_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_ARC_SALESoapIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_ARC_SALESoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_TEL_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_TEL_SALESoapIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_TEL_SALESoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION">
+      <wsdl:input message="tns:VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONSoapIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:portType name="wsVaultVirtualCheckHttpGet">
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_PPD_SALEHttpGetIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_PPD_SALEHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_CREDIT">
+      <wsdl:input message="tns:VIRTUAL_CHECK_PPD_CREDITHttpGetIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_PPD_CREDITHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_CCD_SALEHttpGetIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_CCD_SALEHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_CREDIT">
+      <wsdl:input message="tns:VIRTUAL_CHECK_CCD_CREDITHttpGetIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_CCD_CREDITHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_WEB_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_WEB_SALEHttpGetIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_WEB_SALEHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_RCK_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_RCK_SALEHttpGetIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_RCK_SALEHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_ARC_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_ARC_SALEHttpGetIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_ARC_SALEHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_TEL_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_TEL_SALEHttpGetIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_TEL_SALEHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION">
+      <wsdl:input message="tns:VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONHttpGetIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONHttpGetOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:portType name="wsVaultVirtualCheckHttpPost">
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_PPD_SALEHttpPostIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_PPD_SALEHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_CREDIT">
+      <wsdl:input message="tns:VIRTUAL_CHECK_PPD_CREDITHttpPostIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_PPD_CREDITHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_CCD_SALEHttpPostIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_CCD_SALEHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_CREDIT">
+      <wsdl:input message="tns:VIRTUAL_CHECK_CCD_CREDITHttpPostIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_CCD_CREDITHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_WEB_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_WEB_SALEHttpPostIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_WEB_SALEHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_RCK_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_RCK_SALEHttpPostIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_RCK_SALEHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_ARC_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_ARC_SALEHttpPostIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_ARC_SALEHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_TEL_SALE">
+      <wsdl:input message="tns:VIRTUAL_CHECK_TEL_SALEHttpPostIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_TEL_SALEHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION">
+      <wsdl:input message="tns:VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONHttpPostIn" />
+      <wsdl:output message="tns:VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATIONHttpPostOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="wsVaultVirtualCheckSoap" type="tns:wsVaultVirtualCheckSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE">
+      <soap:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_PPD_SALE" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_CREDIT">
+      <soap:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_PPD_CREDIT" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_SALE">
+      <soap:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_CCD_SALE" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_CREDIT">
+      <soap:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_CCD_CREDIT" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_WEB_SALE">
+      <soap:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_WEB_SALE" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_RCK_SALE">
+      <soap:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_RCK_SALE" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_ARC_SALE">
+      <soap:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_ARC_SALE" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_TEL_SALE">
+      <soap:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_TEL_SALE" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION">
+      <soap:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="wsVaultVirtualCheckSoap12" type="tns:wsVaultVirtualCheckSoap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE">
+      <soap12:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_PPD_SALE" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_CREDIT">
+      <soap12:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_PPD_CREDIT" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_SALE">
+      <soap12:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_CCD_SALE" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_CREDIT">
+      <soap12:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_CCD_CREDIT" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_WEB_SALE">
+      <soap12:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_WEB_SALE" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_RCK_SALE">
+      <soap12:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_RCK_SALE" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_ARC_SALE">
+      <soap12:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_ARC_SALE" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_TEL_SALE">
+      <soap12:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_TEL_SALE" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION">
+      <soap12:operation soapAction="https://www.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck/VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="wsVaultVirtualCheckHttpGet" type="tns:wsVaultVirtualCheckHttpGet">
+    <http:binding verb="GET" />
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE">
+      <http:operation location="/VIRTUAL_CHECK_PPD_SALE" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_CREDIT">
+      <http:operation location="/VIRTUAL_CHECK_PPD_CREDIT" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_SALE">
+      <http:operation location="/VIRTUAL_CHECK_CCD_SALE" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_CREDIT">
+      <http:operation location="/VIRTUAL_CHECK_CCD_CREDIT" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_WEB_SALE">
+      <http:operation location="/VIRTUAL_CHECK_WEB_SALE" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_RCK_SALE">
+      <http:operation location="/VIRTUAL_CHECK_RCK_SALE" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_ARC_SALE">
+      <http:operation location="/VIRTUAL_CHECK_ARC_SALE" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_TEL_SALE">
+      <http:operation location="/VIRTUAL_CHECK_TEL_SALE" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION">
+      <http:operation location="/VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="wsVaultVirtualCheckHttpPost" type="tns:wsVaultVirtualCheckHttpPost">
+    <http:binding verb="POST" />
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE">
+      <http:operation location="/VIRTUAL_CHECK_PPD_SALE" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_CREDIT">
+      <http:operation location="/VIRTUAL_CHECK_PPD_CREDIT" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_SALE">
+      <http:operation location="/VIRTUAL_CHECK_CCD_SALE" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_CCD_CREDIT">
+      <http:operation location="/VIRTUAL_CHECK_CCD_CREDIT" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_WEB_SALE">
+      <http:operation location="/VIRTUAL_CHECK_WEB_SALE" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_RCK_SALE">
+      <http:operation location="/VIRTUAL_CHECK_RCK_SALE" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_ARC_SALE">
+      <http:operation location="/VIRTUAL_CHECK_ARC_SALE" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_TEL_SALE">
+      <http:operation location="/VIRTUAL_CHECK_TEL_SALE" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION">
+      <http:operation location="/VIRTUAL_CHECK_PPD_SALE_WITH_AUTHENTICATION" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="wsVaultVirtualCheck">
+    <wsdl:port name="wsVaultVirtualCheckSoap" binding="tns:wsVaultVirtualCheckSoap">
+      <soap:address location="https://gateway.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck.asmx" />
+    </wsdl:port>
+    <wsdl:port name="wsVaultVirtualCheckSoap12" binding="tns:wsVaultVirtualCheckSoap12">
+      <soap12:address location="https://gateway.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck.asmx" />
+    </wsdl:port>
+    <wsdl:port name="wsVaultVirtualCheckHttpGet" binding="tns:wsVaultVirtualCheckHttpGet">
+      <http:address location="https://gateway.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck.asmx" />
+    </wsdl:port>
+    <wsdl:port name="wsVaultVirtualCheckHttpPost" binding="tns:wsVaultVirtualCheckHttpPost">
+      <http:address location="https://gateway.sagepayments.net/web_services/wsVault/wsVaultVirtualCheck.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

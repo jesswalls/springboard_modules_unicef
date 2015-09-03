@@ -166,12 +166,13 @@ function hook_fundraiser_donation_form($form, $field_key) {
 }
 
 /**
- * Pprovide validation for the donation form.
+ * Provide validation for the donation form.
  *
  * For display glue modules.
  *
- * @return
- *   Return $error state.
+ * @return array
+ *   An array with a 'nid' key of the node being validated if it failed
+ *   validation.
  */
 function hook_fundraiser_donation_validate($form, $form_state) {
 
@@ -195,7 +196,7 @@ function hook_fundraiser_donation_submit($form, $form_state, $donation) {
  *
  * For all modules.
  */
-function hook_fundraiser_donation_post_submit($form, $form_state, $donation) {
+function hook_fundraiser_donation_post_submit_alter(&$form, &$form_state, &$donation) {
 
 }
 

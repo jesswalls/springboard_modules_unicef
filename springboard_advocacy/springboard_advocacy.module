@@ -1,5 +1,494 @@
 <?php
 /**
  * @file
- * Drupal needs this blank file.
+ * Base Springboard advocacy functions.
  */
+
+/**
+ * Implements hook_menu().
+ *
+ * Configuration paths and Advocacy Dashboard paths.
+ */
+function springboard_advocacy_menu() {
+  $items['admin/config/services/advocacy'] = array(
+    'title' => 'Springboard advocacy',
+    'description' => 'Configuration settings for Springboard advocacy features.',
+    'page callback' => 'springboard_advocacy_settings_page',
+    'access arguments' => array('administer springboard advocacy'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/springboard_advocacy.admin.inc',
+  );
+
+  $items['admin/config/springboard/advocacy/index'] = array(
+    'title' => 'Springboard Advocacy',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'access callback' => 'springboard_advocacy_user_can_create_advocacy_type',
+  );
+
+  $items['admin/springboard/advocacy/actions'] = array(
+    'title' => 'Advocacy: Actions',
+    'page arguments' => array('actions'),
+    'access callback' => 'springboard_advocacy_user_can_create_advocacy_type',
+  ) + springboard_advocacy_menu_common(FALSE, TRUE);
+
+  $items['admin/springboard/advocacy/message-actions/all'] = array(
+    'title' => 'Advocacy: All Message Actions',
+    'page arguments' => array('message-actions/all'),
+    'access arguments' => array(
+      'create sba_message_action content',
+    ),
+  ) + springboard_advocacy_menu_common(FALSE, TRUE);
+
+  $items['admin/springboard/advocacy/petitions/all'] = array(
+    'title' => 'Advocacy: All Petitions',
+    'page arguments' => array('petitions/all'),
+    'access arguments' => array(
+      'create springboard_petition content',
+    ),
+  ) + springboard_advocacy_menu_common(FALSE, TRUE);
+
+  $items['admin/springboard/advocacy/reports'] = array(
+    'title' => 'Advocacy Reports',
+    'page arguments' => array('reports'),
+    'page callback' => 'springboard_advocacy_settings_page',
+  ) + springboard_advocacy_menu_common();
+
+  return $items;
+}
+
+/**
+ * Defines common values for advocacy menu items.
+ *
+ * Including a themed page callback for advocacy admin dashboard views.
+ *
+ * @param bool $override_type
+ * @param bool $override_access
+ *
+ * @return array
+ *   Commonly re-used menu parameters.
+ */
+function springboard_advocacy_menu_common($override_type = FALSE, $override_access = FALSE) {
+  $params = array(
+    'page callback' => 'springboard_advocacy_dashboard',
+    'file' => 'springboard_advocacy.dashboard.inc',
+    'file path' => drupal_get_path('module', 'springboard_advocacy') . '/includes',
+  );
+  if (!$override_type) {
+    $params['type'] = MENU_NORMAL_ITEM;
+  }
+  if (!$override_access) {
+    $params['access arguments'] = array('administer springboard advocacy');
+  }
+  return $params;
+}
+
+/**
+ * Access checking function to ensure a user can create an advocacy type.
+ *
+ * This should be checked before allowing access to the advocacy landing page
+ * that lists all the types.
+ */
+function springboard_advocacy_user_can_create_advocacy_type() {
+  // Any new advocacy types will have to be added here in the future.
+  return (user_access('create sba_message_action content') || user_access('create springboard_petition content'));
+}
+
+/**
+ * Implements hook_springboard_admin_admin_menu_items_alter().
+ *
+ * Add the advocacy links to springboard admin.
+ */
+function springboard_advocacy_springboard_admin_admin_menu_items_alter(&$items) {
+  if (module_exists('springboard_advocacy')) {
+    // Top Level: Springboard Advocacy.
+    $items['admin/springboard/advocacy/actions'] = array(
+      'link_path' => 'admin/springboard/advocacy/actions',
+      'link_title' => t('Advocacy'),
+      'menu_name' => 'springboard_admin_menu',
+      'expanded' => 1,
+      'customized' => 1,
+      'weight' => 3,
+      '_children' => array(),
+    );
+
+    $items['admin/springboard/advocacy/actions']['_children']['admin/springboard/advocacy/actions'] = array(
+      'link_path' => 'admin/springboard/advocacy/actions',
+      'link_title' => 'View All Actions',
+      'menu_name' => 'springboard_admin_menu',
+      'expanded' => 1,
+      'customized' => 1,
+      'weight' => -2,
+    );
+  }
+
+  $types = node_type_get_types();
+
+  foreach ($types as $type) {
+
+    if (module_exists('springboard_petition')) {
+      $petition = springboard_petition_is_petition_type($type->type);
+    }
+    // Only create the item if the node type uses Webform User
+    // but not Fundraiser.
+    if ($type && (springboard_advocacy_is_action_type($type->type)  || !empty($petition))) {
+      // Forms > $type->type.
+      $items['admin/springboard/advocacy/actions']['_children']['node/add/' . preg_replace('/_/', '-', $type->type)] = array(
+        'link_path' => 'node/add/' . preg_replace('/_/', '-', $type->type),
+        'link_title' => 'Create a ' . $type->name,
+        'menu_name' => 'springboard_admin_menu',
+        'expanded' => 1,
+        'customized' => 1,
+        'weight' => -1,
+        'access callback' => 'user_access',
+        'access arguments' => array(
+          'create ' . $type->type . ' content',
+        ),
+      );
+    }
+  }
+
+  if (module_exists('springboard_target')) {
+
+    // Springboard Advocacy > Custom Targets.
+    $items['admin/springboard/advocacy/actions']['_children']['admin/springboard/advocacy/targets/custom-targets'] = array(
+      'link_path' => 'admin/springboard/advocacy/targets/custom-targets',
+      'link_title' => 'Custom Targets',
+      'menu_name' => 'springboard_admin_menu',
+      'expanded' => 1,
+      'customized' => 1,
+      'weight' => 2,
+    );
+  }
+}
+
+/**
+ * Implements hook_permission().
+ */
+function springboard_advocacy_permission() {
+  return array(
+    'administer springboard advocacy' => array(
+      'title' => t('Administer Springboard Advocacy'),
+      'description' => t('Perform administration tasks for Springboard advocacy.'),
+    ),
+    'view springboard advocacy reports' => array(
+      'title' => t('View Springboard Advocacy reports'),
+      'description' => t('View reports related to Springboard advocacy activity.'),
+    ),
+    'download springboard advocacy failed messages' => array(
+      'title' => t('Download Springboard Advocacy failed messages'),
+      'description' => t('Download Springboard Advocacy messages for manual delivery.'),
+    ),
+    'view and administer springboard advocacy message queues' => array(
+      'title' => t('View and administer Springboard Advocacy message queues'),
+      'description' => t('Perform administrative tasks on Springboard Advocacy message queues.'),
+    ),
+
+
+  );
+}
+
+/**
+ * Implements hook_libraries_info().
+ *
+ *   Define the advocacy php sdk.
+ */
+function springboard_advocacy_libraries_info() {
+  $libraries['springboard_advocacy'] = array(
+    'name' => 'Springboard Advocacy',
+    'vendor url' => 'https://github.com/JacksonRiver/springboard-sdk-php',
+    'download url' => 'https://github.com/JacksonRiver/springboard-sdk-php',
+    'version callback' => 'springboard_advocacy_library_version',
+    'path' => 'advocacy',
+    'files' => array(
+      'php' => array(
+        'SpringboardAdvocacyAPIClient.php',
+      ),
+    ),
+  );
+  return $libraries;
+}
+
+/**
+ * Version callback for hook_libraries_info().
+ */
+function springboard_advocacy_library_version($library) {
+  return '1';
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function springboard_advocacy_views_api() {
+  return array(
+    'api' => 3.0,
+    'path' => drupal_get_path('module', 'springboard_advocacy') . '/includes/views',
+  );
+}
+
+/**
+ * Implements hook_node_insert().
+ *
+ *   Saves a UUID for action nodes.
+ */
+function springboard_advocacy_node_insert($node) {
+  $types = variable_get('sba_action_types', array());
+  if (in_array($node->type, $types)) {
+    $uuid = array(
+      'nid' => $node->nid,
+      'advocacy_id' => str_replace(' ', '-', uniqid(substr(variable_get('site_name', ''), 0, 10) . '-' . substr($node->title, 0, 10) . '-')),
+    );
+    drupal_write_record('sba_form_id', $uuid);
+  }
+}
+
+
+
+/**
+ * Implements hook_node_load().
+ *
+ * Add the unique form_id and message entity references to action nodes.
+ */
+function springboard_advocacy_node_load($nodes, $types) {
+  $action_types = variable_get('sba_action_types', array());
+  if (count(array_intersect($action_types, $types))) {
+    $uuids = db_query(
+      'SELECT advocacy_id, nid FROM {sba_form_id} WHERE nid IN (:nids)',
+      array(':nids' => array_keys($nodes))
+    );
+    foreach ($uuids as $uuid) {
+      $nodes[$uuid->nid]->advocacy_id = $uuid->advocacy_id;
+    }
+
+    $message_ids = db_query(
+      'SELECT entity_id, field_sba_action_id_target_id FROM {field_data_field_sba_action_id} WHERE field_sba_action_id_target_id IN (:nids)',
+      array(':nids' => array_keys($nodes)));
+    foreach ($message_ids as $message_id) {
+      $nodes[$message_id->field_sba_action_id_target_id]->message_ids[] = $message_id->entity_id;
+    }
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ *
+ * Add action UUIDs and Message IDs to hidden fields on the action form.
+ * Define a custom submit handler for action node types.
+ */
+function springboard_advocacy_form_alter(&$form, &$form_state, $form_id) {
+
+  if ($form_id == 'springboard_advocacy_settings_form') {
+    $form['#submit'][] = 'springboard_advocacy_settings_submit';
+  }
+
+  // Assign each message to a hidden form field on the user-facing form.
+  $types = variable_get('sba_action_types', array());
+  if (!empty($form['#node']->type) && in_array($form['#node']->type, $types)) {
+    $node = $form['#node'];
+    if (isset($form['form_id'])) {
+      $pos = strpos($form['form_id']['#value'], 'webform_client_form');
+      if (!empty($node->message_ids) && $pos !== FALSE) {
+        $form['messages']['#tree'] = TRUE;
+        foreach ($node->message_ids as $id) {
+          $form['messages'][$id] = array(
+            '#type' => 'hidden',
+            '#value' => $id,
+          );
+        }
+      }
+
+      // Assign the form UUID to a hidden field on the user-facing form.
+      if (!empty($node->advocacy_id) && $pos !== FALSE) {
+        $form['advocacy_id'] = array('#type' => 'hidden', '#value' => $node->advocacy_id);
+      }
+    }
+  }
+}
+
+/**
+ * Auxiliary settings submit function.
+ *
+ * Reset the API access token and subscription level variables when
+ * submitting the advocacy configuration form.
+ *
+ * @param $form
+ * @param $form_state
+ */
+function springboard_advocacy_settings_submit($form, $form_state) {
+  variable_del('springboard_advocacy_access_token');
+  variable_del('sba_subscription');
+  cache_clear_all();
+}
+
+/**
+ * Implements hook_theme().
+ *
+ * Wraps various views in a common theme template.
+ */
+function springboard_advocacy_theme($existing, $type, $theme) {
+  $path = drupal_get_path('module', 'springboard_advocacy');
+  $templates = array(
+    'springboard_advocacy_dashboard' => array(
+      'variables' => array('sections' => array()),
+      'template' => drupal_get_path('theme', $theme) . '/templates/springboard-advocacy-dashboard',
+    ),
+
+    'springboard_advocacy_views_attachment_before' => array(
+      'variables' => array(
+        'view' => NULL,
+        'total_rows' => 0,
+        'query' => array(),
+      ),
+      'file' => 'includes/views/springboard_advocacy.views.inc',
+    ),
+  );
+  // Look for theme templates in springboard_advocacy.
+  $templates += drupal_find_theme_functions($existing, array($theme));
+  $templates += drupal_find_theme_templates($existing, '.tpl.php', $path);
+  return $templates;
+}
+
+/**
+ * Determines if a content type is a action type.
+ *
+ * @param string $type
+ *   The content type name.
+ *
+ * @return bool
+ *   TRUE if the content type is a action type.
+ */
+function springboard_advocacy_is_action_type($type) {
+  static $action_types;
+  if (!isset($action_types[$type])) {
+    $action_types = variable_get('sba_action_types', array());
+  }
+  if (in_array($type, $action_types)) {
+    return $type;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Implements hook_preprocess_block_admin_display_form().
+ *
+ * Remove advocacy views blocks from the block admin page list.
+ * They should never be added to a page that way.
+ */
+function springboard_advocacy_preprocess_block_admin_display_form(&$vars) {
+  foreach ($vars['block_listing'][BLOCK_REGION_NONE] as $name => $block) {
+    $pos = strpos($name, 'views_sba');
+    $pos2 = strpos($name, 'views_target');
+    if ($pos !== FALSE || $pos2 !== FALSE) {
+      unset($vars['block_listing'][BLOCK_REGION_NONE][$name]);
+    }
+  }
+}
+
+/**
+ * Implements hook_springboard_admin_views_alter().
+ *
+ * Include sba_actions view in springboard_admin_views in order to
+ * get the views date formatter used in springboard.
+ */
+function springboard_advocacy_springboard_admin_views_alter(&$names) {
+  $names[] = 'sba_actions';
+}
+
+/**
+ * Configuration check helper.
+ *
+ * @param string $type
+ *   The type of of config settings to lookup.
+ *
+ * @return array
+ *   An array of config settings.
+ */
+function springboard_advocacy_api_unconfigured($type = 'All') {
+
+  if ($type == 'springboard') {
+    $settings = springboard_advocacy_api_vars();
+  }
+  elseif ($type == 'smarty') {
+    $settings = springboard_advocacy_smarty_vars();
+  }
+  else {
+    $settings = springboard_advocacy_api_vars() + springboard_advocacy_smarty_vars();
+  }
+
+  $unconfigured  = array();
+  foreach ($settings as $key => $setting) {
+    if ($setting == '') {
+      $unconfigured[] = $key;
+    }
+  }
+
+  return $unconfigured;
+}
+
+/**
+ * Configuration check helper.
+ *
+ * @return array
+ *   Smarty config status.
+ */
+function springboard_advocacy_smarty_vars() {
+  return array(
+    'smarty_auth_id' => variable_get('springboard_advocacy_smarty_authid', ''),
+    'smarty_token' => variable_get('springboard_advocacy_smarty_authtoken', ''),
+  );
+}
+
+/**
+ * Configuration check helper.
+ *
+ * @return array
+ *   API config status.
+ */
+function springboard_advocacy_api_vars() {
+  return array(
+    'api_url' => variable_get('springboard_advocacy_server_url', ''),
+    'client_id' => variable_get('springboard_advocacy_client_id', ''),
+    'client_secret' => variable_get('springboard_advocacy_client_secret', ''),
+  );
+}
+
+
+/**
+ * Static wrapper for API requests.
+ * @return \AdvocacyApiCall
+ */
+function springboard_advocacy_api_call() {
+  $apiCall = &drupal_static(__FUNCTION__);
+  if (!$apiCall instanceof AdvocacyApiCall) {
+    $apiCall = new AdvocacyApiCall();
+  }
+  return $apiCall;
+}
+
+function _springboard_advocacy_webform_get_components_by_nid($nid) {
+  return db_query('SELECT * FROM {webform_component} ' .
+    'WHERE nid = :nid',
+    array(':nid' => $nid))->fetchAll();
+}
+
+function _springboard_advocacy_webform_submission_flatten($nid, $submit_tree, $submission_keys = NULL, $fieldset_keys = NULL) {
+  if ($submission_keys == NULL) {
+    $components = _springboard_advocacy_webform_get_components_by_nid($nid);
+    foreach ($components as $component) {
+      if ($component->type != 'fieldset') {
+        $submission_keys[] = $component->form_key;
+      }
+    }
+  }
+  $flat_array = array();
+  foreach ($submit_tree as $key => $value) {
+    $flat_array[$key] = $value;
+    if (is_array($value)) {
+      $flat_array = array_merge($flat_array, _springboard_advocacy_webform_submission_flatten($nid, $value, $submission_keys, $fieldset_keys));
+    }
+  }
+  // Filter to only submission key results.
+  $flat_array = array_intersect_key($flat_array, array_combine($submission_keys, $submission_keys));
+  return $flat_array;
+}

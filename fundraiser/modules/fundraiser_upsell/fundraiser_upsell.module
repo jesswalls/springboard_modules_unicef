@@ -497,6 +497,7 @@ function fundraiser_upsell_donation_form($form, &$form_state) {
   }
 
   $node = node_load($nid);
+  $currency = fundraiser_get_currency_from_node($node);
 
   // Replace tokens in the content.
   $content = token_replace($node->fundraiser_upsell['content'], array('donation' => $donation));
@@ -509,7 +510,7 @@ function fundraiser_upsell_donation_form($form, &$form_state) {
     '#title' => t('Monthly donation'),
     '#type' => 'textfield',
     '#size' => 5,
-    '#field_prefix' => '$',
+    '#field_prefix' => $currency['symbol'],
     '#default_value' => $suggested_amount,
     '#weight' => 10,
   );
@@ -573,8 +574,9 @@ function fundraiser_upsell_donation_form_validate($form, &$form_state) {
     form_set_error('amount', t('Amount must be numeric.'));
   }
   $node = node_load($form_state['values']['nid']);
+  $currency = fundraiser_get_currency_from_node($node);
   if ($form_state['values']['amount'] < $node->minimum_donation_amount) {
-    form_set_error('amount', t('Amount must not be less than @amount.', array('@amount' => '$' . number_format($node->minimum_donation_amount, 2))));
+    form_set_error('amount', t('Amount must not be less than @amount.', array('@amount' => $currency['symbol'] . number_format($node->minimum_donation_amount, 2))));
   }
 }
 

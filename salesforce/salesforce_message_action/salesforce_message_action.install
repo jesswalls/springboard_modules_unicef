@@ -1,0 +1,532 @@
+<?php
+
+/**
+ * @file
+ * Install and update routines for Salesforce advocacy module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function salesforce_message_action_install() {
+  // Install the message action fieldmap.
+  $message_action_mapping = entity_import('salesforce_mapping', salesforce_message_action_message_action_fieldmap());
+  entity_save('salesforce_mapping', $message_action_mapping);
+
+  // Install the message action default fieldmap.
+  salesforce_message_action_create_actions_taken_fieldmap();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function salesforce_message_action_uninstall() {
+
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'salesforce_genmap_map');
+  $query->propertyCondition('module', 'salesforce_message_action');
+  $query->propertyCondition('nid', -20); // This should use the constant, but it doesn't work.
+  $result = $query->execute();
+  if (!empty($result)) {
+    $mids = array_keys($result['salesforce_genmap_map']);
+    entity_delete('salesforce_genmap_map', $mids[0]);
+  }
+
+  $result = salesforce_mapping_load_multiple(array('drupal_bundle' => 'sba_message_action'));
+  $mapping = array_shift($result);
+  entity_delete('salesforce_mapping', $mapping->salesforce_mapping_id);
+}
+
+/**
+ * Creates a default fieldmap for message action form submissions.
+ */
+function salesforce_message_action_create_actions_taken_fieldmap() {
+  $map = array();
+  $map = entity_create('salesforce_genmap_map', $map);
+  $map->nid = SALESFORCE_MESSAGE_ACTION_DEFAULT_MAP_ID;
+  $map->map_handler = 'webform';
+  $map->salesforce_object_type = 'sb_Actions_Taken__c';
+  $object_type = '';
+  module_load_include('inc', 'salesforce_genmap', 'includes/salesforce_genmap.map');
+  $map->salesforce_record_type = $object_type;
+  $map->field_map = array(
+    'webform_map' => array(
+      'ms' => 'Market_Source__c',
+      'cid' => 'Campaign__c',
+      'referrer' => 'Referrer__c',
+      'initial_referrer' => 'Initial_Referrer__c',
+      'search_engine' => 'Search_Engine__c',
+      'search_string' => 'Search_String__c',
+      'user_agent' => 'User_Agent__c',
+      'sba_deliverable_count' => 'Generated_Message_Count__c',
+      'sba_user_edit_flag' => 'Message_Edited__c',
+    ),
+    'salesforce_node_map' => array(
+      'title' => 'Name',
+      'action' => 'Action__c',
+      'action_type' => 'Action_Type__c',
+    ),
+    'salesforce_submission_map' => array(
+      'sid' => 'Submission_ID__c',
+      'date' => 'Date_of_Action__c',
+    ),
+  );
+  $map->sync_options = array(
+    'insert' => 'insert',
+    'update' => 'update',
+    'delete' => 'delete',
+  );
+  $map->status = 1;
+  $map->module = 'salesforce_message_action';
+  salesforce_genmap_save_map($map, 'webform');
+}
+
+/**
+ * Creates a default fieldmap for message action nodes.
+ */
+function salesforce_message_action_message_action_fieldmap() {
+  module_load_include('inc', 'salesforce_genmap', 'includes/salesforce_genmap.map');
+  $sfapi = salesforce_get_api();
+  $object_type = '';
+  if ($sfapi->isAuthorized()) {
+    $sf_records = _sfw_salesforce_record_type_list($sfapi, 'sb_action__c');
+    $sf_records = array_flip($sf_records);
+    if (array_key_exists('Message Action', $sf_records)) {
+      $object_type = $sf_records['Message Action'];
+    }
+  }
+
+  return '{
+    "type" : "salesforce_mapping",
+    "name" : "message_action",
+    "label" : "Message Action",
+    "sync_triggers" : "3",
+    "salesforce_object_type" : "sb_action__c",
+    "salesforce_record_type" : "' . $object_type . '",
+    "drupal_entity_type" : "node",
+    "drupal_bundle" : "sba_message_action",
+    "field_mappings" : [
+      {
+        "drupal_field" : { "fieldmap_type" : "property", "fieldmap_value" : "nid" },
+        "salesforce_field" : {
+          "autoNumber" : false,
+          "byteLength" : 0,
+          "calculated" : false,
+          "calculatedFormula" : null,
+          "cascadeDelete" : false,
+          "caseSensitive" : false,
+          "controllerName" : null,
+          "createable" : true,
+          "custom" : true,
+          "defaultValue" : null,
+          "defaultValueFormula" : null,
+          "defaultedOnCreate" : false,
+          "dependentPicklist" : false,
+          "deprecatedAndHidden" : false,
+          "digits" : 0,
+          "displayLocationInDecimal" : false,
+          "externalId" : true,
+          "filterable" : true,
+          "groupable" : false,
+          "htmlFormatted" : false,
+          "idLookup" : true,
+          "inlineHelpText" : "ID of the action in Springboard",
+          "label" : "Springboard ID",
+          "length" : 0,
+          "name" : "Springboard_ID__c",
+          "nameField" : false,
+          "namePointing" : false,
+          "nillable" : true,
+          "permissionable" : true,
+          "picklistValues" : [],
+          "precision" : 18,
+          "referenceTo" : [],
+          "relationshipName" : null,
+          "relationshipOrder" : null,
+          "restrictedDelete" : false,
+          "restrictedPicklist" : false,
+          "scale" : 0,
+          "soapType" : "xsd:double",
+          "sortable" : true,
+          "type" : "double",
+          "unique" : false,
+          "updateable" : true,
+          "writeRequiresMasterRead" : false
+        },
+        "key" : true,
+        "direction" : "drupal_sf",
+        "drupal_sf" : "always",
+        "sf_drupal" : "never"
+      },
+      {
+        "drupal_field" : { "fieldmap_type" : "property", "fieldmap_value" : "title" },
+        "salesforce_field" : {
+          "autoNumber" : false,
+          "byteLength" : 240,
+          "calculated" : false,
+          "calculatedFormula" : null,
+          "cascadeDelete" : false,
+          "caseSensitive" : false,
+          "controllerName" : null,
+          "createable" : true,
+          "custom" : false,
+          "defaultValue" : null,
+          "defaultValueFormula" : null,
+          "defaultedOnCreate" : true,
+          "dependentPicklist" : false,
+          "deprecatedAndHidden" : false,
+          "digits" : 0,
+          "displayLocationInDecimal" : false,
+          "externalId" : false,
+          "filterable" : true,
+          "groupable" : true,
+          "htmlFormatted" : false,
+          "idLookup" : true,
+          "inlineHelpText" : null,
+          "label" : "Action Name",
+          "length" : 80,
+          "name" : "Name",
+          "nameField" : true,
+          "namePointing" : false,
+          "nillable" : true,
+          "permissionable" : false,
+          "picklistValues" : [],
+          "precision" : 0,
+          "referenceTo" : [],
+          "relationshipName" : null,
+          "relationshipOrder" : null,
+          "restrictedDelete" : false,
+          "restrictedPicklist" : false,
+          "scale" : 0,
+          "soapType" : "xsd:string",
+          "sortable" : true,
+          "type" : "string",
+          "unique" : false,
+          "updateable" : true,
+          "writeRequiresMasterRead" : false
+        },
+        "key" : false,
+        "direction" : "drupal_sf",
+        "drupal_sf" : "always",
+        "sf_drupal" : "never"
+      },
+      {
+        "drupal_field" : { "fieldmap_type" : "property", "fieldmap_value" : "url" },
+        "salesforce_field" : {
+          "autoNumber" : false,
+          "byteLength" : 765,
+          "calculated" : false,
+          "calculatedFormula" : null,
+          "cascadeDelete" : false,
+          "caseSensitive" : false,
+          "controllerName" : null,
+          "createable" : true,
+          "custom" : true,
+          "defaultValue" : null,
+          "defaultValueFormula" : null,
+          "defaultedOnCreate" : false,
+          "dependentPicklist" : false,
+          "deprecatedAndHidden" : false,
+          "digits" : 0,
+          "displayLocationInDecimal" : false,
+          "externalId" : false,
+          "filterable" : true,
+          "groupable" : true,
+          "htmlFormatted" : false,
+          "idLookup" : false,
+          "inlineHelpText" : "Public URL of the action.",
+          "label" : "Public URL",
+          "length" : 255,
+          "name" : "Public_URL__c",
+          "nameField" : false,
+          "namePointing" : false,
+          "nillable" : true,
+          "permissionable" : true,
+          "picklistValues" : [],
+          "precision" : 0,
+          "referenceTo" : [],
+          "relationshipName" : null,
+          "relationshipOrder" : null,
+          "restrictedDelete" : false,
+          "restrictedPicklist" : false,
+          "scale" : 0,
+          "soapType" : "xsd:string",
+          "sortable" : true,
+          "type" : "url",
+          "unique" : false,
+          "updateable" : true,
+          "writeRequiresMasterRead" : false
+        },
+        "key" : false,
+        "direction" : "drupal_sf",
+        "drupal_sf" : "always",
+        "sf_drupal" : "never"
+      },
+      {
+        "drupal_field" : { "fieldmap_type" : "property", "fieldmap_value" : "edit_url" },
+        "salesforce_field" : {
+          "autoNumber" : false,
+          "byteLength" : 765,
+          "calculated" : false,
+          "calculatedFormula" : null,
+          "cascadeDelete" : false,
+          "caseSensitive" : false,
+          "controllerName" : null,
+          "createable" : true,
+          "custom" : true,
+          "defaultValue" : null,
+          "defaultValueFormula" : null,
+          "defaultedOnCreate" : false,
+          "dependentPicklist" : false,
+          "deprecatedAndHidden" : false,
+          "digits" : 0,
+          "displayLocationInDecimal" : false,
+          "externalId" : false,
+          "filterable" : true,
+          "groupable" : true,
+          "htmlFormatted" : false,
+          "idLookup" : false,
+          "inlineHelpText" : "Link to edit this action in Springboard.",
+          "label" : "Edit URL",
+          "length" : 255,
+          "name" : "Edit_URL__c",
+          "nameField" : false,
+          "namePointing" : false,
+          "nillable" : true,
+          "permissionable" : true,
+          "picklistValues" : [],
+          "precision" : 0,
+          "referenceTo" : [],
+          "relationshipName" : null,
+          "relationshipOrder" : null,
+          "restrictedDelete" : false,
+          "restrictedPicklist" : false,
+          "scale" : 0,
+          "soapType" : "xsd:string",
+          "sortable" : true,
+          "type" : "url",
+          "unique" : false,
+          "updateable" : true,
+          "writeRequiresMasterRead" : false
+        },
+        "key" : false,
+        "direction" : "drupal_sf",
+        "drupal_sf" : "always",
+        "sf_drupal" : "never"
+      },
+      {
+        "drupal_field" : { "fieldmap_type" : "property", "fieldmap_value" : "created" },
+        "salesforce_field" : {
+          "autoNumber" : false,
+          "byteLength" : 0,
+          "calculated" : false,
+          "calculatedFormula" : null,
+          "cascadeDelete" : false,
+          "caseSensitive" : false,
+          "controllerName" : null,
+          "createable" : true,
+          "custom" : true,
+          "defaultValue" : null,
+          "defaultValueFormula" : null,
+          "defaultedOnCreate" : false,
+          "dependentPicklist" : false,
+          "deprecatedAndHidden" : false,
+          "digits" : 0,
+          "displayLocationInDecimal" : false,
+          "externalId" : false,
+          "filterable" : true,
+          "groupable" : true,
+          "htmlFormatted" : false,
+          "idLookup" : false,
+          "inlineHelpText" : "Create date of the action",
+          "label" : "Date Created",
+          "length" : 0,
+          "name" : "Date_Created__c",
+          "nameField" : false,
+          "namePointing" : false,
+          "nillable" : true,
+          "permissionable" : true,
+          "picklistValues" : [],
+          "precision" : 0,
+          "referenceTo" : [],
+          "relationshipName" : null,
+          "relationshipOrder" : null,
+          "restrictedDelete" : false,
+          "restrictedPicklist" : false,
+          "scale" : 0,
+          "soapType" : "xsd:date",
+          "sortable" : true,
+          "type" : "date",
+          "unique" : false,
+          "updateable" : true,
+          "writeRequiresMasterRead" : false
+        },
+        "key" : false,
+        "direction" : "drupal_sf",
+        "drupal_sf" : "always",
+        "sf_drupal" : "never"
+      },
+      {
+        "drupal_field" : { "fieldmap_type" : "property", "fieldmap_value" : "body:value" },
+        "salesforce_field" : {
+          "autoNumber" : false,
+          "byteLength" : 30000,
+          "calculated" : false,
+          "calculatedFormula" : null,
+          "cascadeDelete" : false,
+          "caseSensitive" : false,
+          "controllerName" : null,
+          "createable" : true,
+          "custom" : true,
+          "defaultValue" : null,
+          "defaultValueFormula" : null,
+          "defaultedOnCreate" : false,
+          "dependentPicklist" : false,
+          "deprecatedAndHidden" : false,
+          "digits" : 0,
+          "displayLocationInDecimal" : false,
+          "externalId" : false,
+          "filterable" : false,
+          "groupable" : false,
+          "htmlFormatted" : false,
+          "idLookup" : false,
+          "inlineHelpText" : "This is the body or long description of the action.",
+          "label" : "Body",
+          "length" : 10000,
+          "name" : "Body__c",
+          "nameField" : false,
+          "namePointing" : false,
+          "nillable" : true,
+          "permissionable" : true,
+          "picklistValues" : [],
+          "precision" : 0,
+          "referenceTo" : [],
+          "relationshipName" : null,
+          "relationshipOrder" : null,
+          "restrictedDelete" : false,
+          "restrictedPicklist" : false,
+          "scale" : 0,
+          "soapType" : "xsd:string",
+          "sortable" : false,
+          "type" : "textarea",
+          "unique" : false,
+          "updateable" : true,
+          "writeRequiresMasterRead" : false
+        },
+        "key" : false,
+        "direction" : "drupal_sf",
+        "drupal_sf" : "always",
+        "sf_drupal" : "never"
+      },
+      {
+        "drupal_field" : {
+          "fieldmap_type" : "property",
+          "fieldmap_value" : "field_webform_user_internal_name"
+        },
+        "salesforce_field" : {
+          "autoNumber" : false,
+          "byteLength" : 765,
+          "calculated" : false,
+          "calculatedFormula" : null,
+          "cascadeDelete" : false,
+          "caseSensitive" : false,
+          "controllerName" : null,
+          "createable" : true,
+          "custom" : true,
+          "defaultValue" : null,
+          "defaultValueFormula" : null,
+          "defaultedOnCreate" : false,
+          "dependentPicklist" : false,
+          "deprecatedAndHidden" : false,
+          "digits" : 0,
+          "displayLocationInDecimal" : false,
+          "externalId" : false,
+          "filterable" : true,
+          "groupable" : true,
+          "htmlFormatted" : false,
+          "idLookup" : false,
+          "inlineHelpText" : "Internal organizational name for this action, if there is one.",
+          "label" : "Internal Name",
+          "length" : 255,
+          "name" : "Internal_Name__c",
+          "nameField" : false,
+          "namePointing" : false,
+          "nillable" : true,
+          "permissionable" : true,
+          "picklistValues" : [],
+          "precision" : 0,
+          "referenceTo" : [],
+          "relationshipName" : null,
+          "relationshipOrder" : null,
+          "restrictedDelete" : false,
+          "restrictedPicklist" : false,
+          "scale" : 0,
+          "soapType" : "xsd:string",
+          "sortable" : true,
+          "type" : "string",
+          "unique" : false,
+          "updateable" : true,
+          "writeRequiresMasterRead" : false
+        },
+        "key" : false,
+        "direction" : "drupal_sf",
+        "drupal_sf" : "always",
+        "sf_drupal" : "never"
+      }
+    ],
+    "push_async" : "0",
+    "push_batch" : "0",
+    "created" : "1430506377",
+    "updated" : "1430507210",
+    "weight" : "0",
+    "locked" : "0",
+    "rdf_mapping" : []
+  }';
+}
+
+/**
+ * Revert manual changes that were required to work around a fieldmap bug in 4.7.
+ * Changes the value of the module field from sba_message_action to salesforce_message_action.
+ *
+ * See https://www.assembla.com/spaces/springboard/tickets/455#/activity/ticket:
+ * for more detail.
+ */
+function salesforce_message_action_update_7001() {
+  db_update('salesforce_genmap_map')
+    ->fields(array(
+      'module' => 'salesforce_message_action',
+    ))
+    ->condition('module', 'sba_message_action')
+    ->execute();
+}
+
+/**
+ * Maps 2 new message action fields introduced in 4.8.
+ */
+function salesforce_message_action_update_7002() {
+  $result = db_query('SELECT mid, field_map FROM {salesforce_genmap_map} WHERE module = :module', array(':module' => 'salesforce_message_action'));
+
+  foreach ($result as $record) {
+    $map_need_updating = FALSE;
+    $map = unserialize($record->field_map);
+    if (!array_key_exists('sba_deliverable_count', $map['webform_map'])) {
+      $map['webform_map']['sba_deliverable_count'] = 'Generated_Message_Count__c';
+      $map_need_updating = TRUE;
+    }
+
+    if (!array_key_exists('sba_user_edit_flag', $map['webform_map'])) {
+      $map['webform_map']['sba_user_edit_flag'] = 'Message_Edited__c';
+      $map_need_updating = TRUE;
+    }
+
+    // Only perform the update if the fields weren't already mapped manually.
+    if ($map_need_updating) {
+      db_update('salesforce_genmap_map')
+        ->fields(array(
+          'field_map' => serialize($map),
+        ))
+        ->condition('mid', $record->mid)
+        ->execute();
+    }
+  }
+}

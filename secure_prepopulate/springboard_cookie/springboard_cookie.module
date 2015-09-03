@@ -18,7 +18,7 @@ function springboard_cookie_menu() {
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
   );
-  
+
   return $items;
 }
 
@@ -49,7 +49,7 @@ function springboard_cookie_init() {
       drupal_page_is_cacheable(FALSE);
     }
   }
-  
+
   // Make sure this client has a cookie and a client_id.
   if (variable_get('cache', FALSE) && drupal_page_is_cacheable()) {
     // Page can be cached, so send Javascript to make the client check itself for the cookie.
@@ -82,9 +82,9 @@ function springboard_cookie_user_login(&$edit, $account) {
 }
 
 /**
- * Implementation of hook_fundraiser_donation_post_submit().
+ * Implements hook_fundraiser_donation_post_submit_alter().
  */
-function springboard_cookie_fundraiser_donation_post_submit($form, $form_state, $donation) {
+function springboard_cookie_fundraiser_donation_post_submit_alter(&$form, &$form_state, &$donation) {
   // Pull user data from the new donation and tag it to the client.
   $new_data = array();
   if ($donation->uid) {
@@ -135,7 +135,7 @@ function springboard_cookie_form_alter(&$form, &$form_state, $form_id) {
     );
     $form['#validate'][] = 'springboard_cookie_settings_validate';
   }
-  
+
   // Add submission handler to Webform User-enabled webform.
   if (module_exists('webform_user')) {
     if (strpos($form_id, 'webform_client') !== FALSE && arg(2) != 'submission' && arg(4) != 'edit') {
@@ -198,7 +198,7 @@ function springboard_cookie_js_new_cookie() {
   $cookie = springboard_cookie_get_cookie();
   $serialized = serialize($cookie);
   $encrypted = secure_prepopulate_encrypt($serialized);
-  
+
   // Send it back as JSON.
   drupal_json_output(array(
     'cookie' => $encrypted,
@@ -210,13 +210,13 @@ function springboard_cookie_js_new_cookie() {
 
 /**
  * Tag the client with Springboard cookie data.
- * 
+ *
  * If the client doesn't have a Springboard cookie, one will be created, including a client ID.
- * 
+ *
  * @param array $new_data
- *   An array of name/value pairs. If a string or numeric value contradicts the existing value for a 
- *   given name, then the existing cookie will be thrown out and this data will go into a new cookie 
- *   with a new client_id. For an array value, its unique contents will be added to any existing array 
+ *   An array of name/value pairs. If a string or numeric value contradicts the existing value for a
+ *   given name, then the existing cookie will be thrown out and this data will go into a new cookie
+ *   with a new client_id. For an array value, its unique contents will be added to any existing array
  *   of the same name (and duplicate values will be ignored).
  */
 function springboard_cookie_tag_client($new_data = array()) {
@@ -236,7 +236,7 @@ function springboard_cookie_tag_client($new_data = array()) {
     else {
       // Add new data to the cookie.
       $new_cookie[$name] = $new_data[$name];
-    } 
+    }
   }
   // Make sure the cookie has a client ID.
   if (!isset($new_cookie['client_id'])) {
@@ -255,7 +255,7 @@ function springboard_cookie_tag_client($new_data = array()) {
 
 /**
  * Fetch the Springboard cookie, decrypt, and return data.
- * 
+ *
  * @return array $cookie_data
  *   An array of name/value pairs from the client cookie. Includes data added during execution of the
  *   current page request.
@@ -263,7 +263,7 @@ function springboard_cookie_tag_client($new_data = array()) {
 function springboard_cookie_get_cookie() {
   // Static-persist the cookie's data if/when it is set.
   $cookie_data = &drupal_static(__FUNCTION__);
-  
+
   // First time? Look for the cookie.
   if ($cookie_data === NULL) {
     $cookie_data = array();
@@ -282,23 +282,23 @@ function springboard_cookie_get_cookie() {
       }
     }
   }
-  
+
   // Return the cookie data.
   return $cookie_data;
 }
 
 /**
  * Set the Springboard cookie, encrypting the given data array and adding it to the HTTP response.
- * 
+ *
  * Note: If you're trying to add data to the cookie, what you want is springboard_cookie_tag_client().
- * 
+ *
  * @see springboard_cookie_tag_client()
  */
 function springboard_cookie_set_cookie($cookie_data) {
   // Update the getter's static cache.
   $static_cache = &drupal_static('springboard_cookie_get_cookie');
   $static_cache = $cookie_data;
-  
+
   // Serialize, encrypt, and add to the response.
   $serialized = serialize($cookie_data);
   $encrypted = secure_prepopulate_encrypt($serialized);

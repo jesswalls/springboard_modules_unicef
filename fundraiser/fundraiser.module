@@ -152,6 +152,21 @@ function fundraiser_token_info() {
         'available only if the user selected a credit card method supporting this token.'),
     );
   }
+
+  // The currency is a special case.
+  $info['tokens']['donation']['currency:code'] = array(
+    'name' => t('Currency code'),
+    'description' => t('The currency code. For example, "USD".'),
+  );
+  $info['tokens']['donation']['currency:name'] = array(
+    'name' => t('Currency name'),
+    'description' => t('The full currency name. For example, "United States Dollar".'),
+  );
+  $info['tokens']['donation']['currency:symbol'] = array(
+    'name' => t('Currency symbol'),
+    'description' => t('The currency symbol. For example, "$".'),
+  );
+
   return $info;
 }
 
@@ -165,7 +180,7 @@ function _fundraiser_donation_token_info($fields = NULL, $tokens = array()) {
   $children = element_children($fields);
   foreach ($children as $child) {
     // TODO Adjust this tokening to account for the new changed in donation fields.
-    $disallowed = array('card_cvv');
+    $disallowed = array('card_cvv', 'currency');
     if (isset($fields[$child]['#type']) && $fields[$child]['#type'] != 'fieldset' && !in_array($child, $disallowed)) {
       // Add children.
       $tokens[$child] = array(
@@ -209,6 +224,12 @@ function fundraiser_tokens($type, $tokens, $data = array(), $options = array()) 
         $donation->donation['payment_fields']['credit']['card_expiration_year'] : '';
       $data['card_type'] = isset($donation->donation['payment_fields']['credit']['card_type']) ?
         $donation->donation['payment_fields']['credit']['card_type'] : '';
+    }
+
+    if (is_array($data['currency'])) {
+      foreach ($data['currency'] as $key => $value) {
+        $data['currency:' . $key] = $value;
+      }
     }
 
     // Replace the given tokens.
@@ -560,6 +581,33 @@ function _fundraiser_donation_settings_form(&$form, &$form_state) {
     $form['fundraiser_settings']['gateways'] = _fundraiser_form_payment_method_config_fieldset($gateways, $configuration, $fieldset, 'gateways');
     // add a validate callback.
     $form['#validate'][] = '_fundraiser_form_payment_method_validate';
+  }
+
+  // Make changes to the currency settings field.
+  if (!empty($form['field_fundraiser_currency'])) {
+    $currency_field = &$form['field_fundraiser_currency'][ $form['field_fundraiser_currency']['#language'] ];
+    // Remove the none option.
+    unset($currency_field['#options']['_none']);
+
+    // If there is only one value left hide the field and set the value to the default currency.
+    if (count($currency_field['#options']) === 1) {
+      $currency_field['#type'] = 'value';
+      $currency_field['#default_value'] = commerce_default_currency();
+      $currency_field['#required'] = FALSE;
+    }
+    // Else, move it into the fundraiser group.
+    else {
+      $form['fundraiser_settings']['currency'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Currency'),
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+      );
+
+      $currency_field['#title_display'] = 'none';
+      $form['fundraiser_settings']['currency']['field_fundraiser_currency'] = $form['field_fundraiser_currency'];
+      unset($form['field_fundraiser_currency']);
+    }
   }
 
   // Add specific CSS settings for IE support. Pending http://drupal.org/node/1015798 being resolved,
@@ -1008,7 +1056,20 @@ function fundraiser_fundraiser_field_info() {
     '#allow_update' => 1,
     '#create_callback' => '_fundraiser_other_amount_field_create',
     '#validate_callback' => '_fundraiser_other_amount_field_validate',
+    '#display_callback' => '_fundraiser_other_amount_field_display',
   );
+
+  $fields['donation']['currency'] = array(
+    '#title' => 'Currency',
+    '#type' => 'hidden',
+    '#value' => '',
+    '#required' => 1,
+    '#allow_update' => 1,
+    '#reset_value' => 1,
+    '#create_callback' => '_fundraiser_currency_field_create',
+    '#display_callback' => '_fundraiser_currency_field_display',
+  );
+
   $quantity_max = variable_get('fundraiser_default_quantity', '10');
   $quantitys = range(1, $quantity_max);
   $formatted_quantitys = '';
@@ -1140,10 +1201,13 @@ function fundraiser_fundraiser_field_info() {
  * Field callback, called at runtime to update the field with fundraiser specific settings during creation.
  */
 function _fundraiser_amount_field_create($fundraiser, $field) {
+  $currency = fundraiser_get_currency_from_node($fundraiser);
+  $currency_symbol = check_plain($currency['symbol']);
+
   // If donation amounts don't exist, use amount as is.
   if (empty($fundraiser->donation_amounts) || !is_array($fundraiser->donation_amounts)) {
     // Show the minimum amount when only displaying an amount text box.
-    $field['#extra']['description'] = 'Minimum payment $' . number_format($fundraiser->minimum_donation_amount, 2) . '.';
+    $field['#extra']['description'] = 'Minimum payment ' . $currency_symbol . number_format($fundraiser->minimum_donation_amount, 2) . '.';
     return $field;
   }
   // Else we want a select field.
@@ -1154,7 +1218,7 @@ function _fundraiser_amount_field_create($fundraiser, $field) {
     $formatted_amounts = '';
     foreach ($fundraiser->donation_amounts as $value => $label) {
       if (empty($label)) {
-        $label = '$' . $value;
+        $label = $currency_symbol . $value;
       }
       $formatted_amounts[] = implode('|', array($value, $label));
     }
@@ -1203,8 +1267,32 @@ function _fundraiser_other_amount_field_create($fundraiser, $field) {
     return FALSE; // FALSE as opposed to empty, means we delete this field if it exists.
   }
   // Update the min with fundraiser's min.
-  $field['#extra']['description'] = 'Minimum payment $' . number_format($fundraiser->minimum_donation_amount, 2) . '.';
+  $field['#extra']['description'] = 'Minimum payment [currency-symbol]' . number_format($fundraiser->minimum_donation_amount, 2) . '.';
+
   // Return the field to be created.
+  return $field;
+}
+
+/**
+ * Fundraiser field display callback for the other amount field.
+ */
+function _fundraiser_other_amount_field_display($form, $form_state, $field) {
+  // Get the currency, either from a current donation or the node.
+  if (!empty($form['#donation'])) {
+    $currency = $form['#donation']->donation['currency'];
+  }
+  else {
+    $currency = fundraiser_get_currency_from_node($form['#node']);
+  }
+
+  $field['#attributes']['class'][] = 'input-medium';
+  $field['#field_prefix'] = $currency['symbol'];
+
+  // Replace the currency-symbol token.
+  if (isset($field['#description'])) {
+    $field['#description'] = str_replace('[currency-symbol]', $currency['symbol'], $field['#description']);
+  }
+
   return $field;
 }
 
@@ -1239,6 +1327,36 @@ function _fundraiser_other_amount_field_validate($form, $form_state, $submission
     return array('other_amount' => t('Your donation amount must be greater than or equal to @min_amount.',
       array('@min_amount' => $minimum_donation_amount)));
   }
+}
+
+/**
+ * Fundraiser field create callback.
+ *
+ * Sets the currency value from the node.
+ */
+function _fundraiser_currency_field_create($fundraiser, $field) {
+  $currency = fundraiser_get_currency_from_node($fundraiser);
+  $field['#value'] = $currency['code'];
+
+  return $field;
+}
+
+/**
+ * Fundraiser field display callback.
+ *
+ * Note this field is a value type, so not really displayed.
+ */
+function _fundraiser_currency_field_display($form, $form_state, $field) {
+  // Get the currency, either from a current donation or the node.
+  if (!empty($form['#donation'])) {
+    $currency = $form['#donation']->donation['currency'];
+  }
+  else {
+    $currency = fundraiser_get_currency_from_node($form['#node']);
+  }
+
+  $field['#value'] = $currency['code'];
+  return $field;
 }
 
 /**
@@ -1353,6 +1471,9 @@ function fundraiser_display_form_fields($calling_module, &$form, $form_state, $f
  * Process through given submission fields to validate on the fly. Recursive.
  * This handles the calls to additional validation callbacks as defined in the field_info array.
  * May be called by any module that needs to perform validation on a submitted array. See sustainers.
+ *
+ * @return bool
+ *   TRUE if there are validation errors.
  */
 function fundraiser_validate_form_fields($form, $form_state, $submission_fields, $field_info = NULL, $errors = FALSE) {
   // Grab field info, we'll use this all the way down.
@@ -1458,11 +1579,11 @@ function _fundraiser_donation_form_js_validation_config($node) {
 function fundraiser_donation_form(&$form, &$form_state) {
   $node = $form['#node'];
 
-  // Attach the js files
+  // Attach the js files.
   $form['#attached']['js'] = array(
     drupal_get_path('module', 'fundraiser') . '/js/jquery.alphanumeric.min.js',
     drupal_get_path('module', 'fundraiser') . '/js/jquery.validate.min.js',
-    drupal_get_path('module', 'fundraiser') . '/js/donation_validation.min.js',
+    drupal_get_path('module', 'fundraiser') . '/js/donation_validation.js',
   );
 
   // Add the validation configuration settings array.
@@ -1474,22 +1595,20 @@ function fundraiser_donation_form(&$form, &$form_state) {
     );
   }
 
-  if(isset($form['#node']->minimum_donation_amount)) {
-    $min = array('minimum_donation_amount' => $form['#node']->minimum_donation_amount);
+  if(isset($node->minimum_donation_amount)) {
+    $min = array('minimum_donation_amount' => $node->minimum_donation_amount);
     $form['#attached']['js'][] = array(
-    'data' => array('fundraiserWebform' => $min),
-    'type' => 'setting',
+      'data' => array('fundraiserWebform' => $min),
+      'type' => 'setting',
     );
   }
 
   // Check to see if the form is being accessed over HTTPS.
   if ((!_fundraiser_is_secure() && !variable_get('fundraiser_development_mode', 0))) {
     // Return a 404 if the page isn't secure and should be.
-    $node = $form['#node'];
     watchdog('fundraiser', 'The donation form <em>@title</em> is not protected with SSL.',
       array('@title' => $node->title), WATCHDOG_CRITICAL, l('View the donation form', 'node/' . $node->nid));
-    $message = variable_get('fundraiser_http_error_message', t('We\'re sorry, but this ' .
-        'donation form is experiencing a temporary problem. Please try again later.'));
+    $message = variable_get('fundraiser_http_error_message', t('We\'re sorry, but this donation form is experiencing a temporary problem. Please try again later.'));
     // Remove all other form elements.
     foreach (element_children($form) as $child) {
       unset($form[$child]);
@@ -1513,7 +1632,18 @@ function fundraiser_donation_form(&$form, &$form_state) {
     // When confirmations are moved, this goes elsewhere.
     $form['#submit'][] = 'fundraiser_donation_post_submit';
 
-    // Add class to zip code field
+    // Apply currency data to the form.
+    $currency = fundraiser_get_currency_from_node($node);
+    $symbol = check_plain($currency['symbol']);
+
+    // Make the currency available as a JS setting.
+    // Used by quantity to set a Total value.
+    $form['#attached']['js'][] = array(
+      'data' => array('fundraiser' => array('currency' => $currency)),
+      'type' => 'setting',
+    );
+
+    // Add class to quantity field
     $quantity = _fundraiser_get_form_field($form, 'quantity');
     if (!empty($quantity)) {
       $quantity['#attributes']['class'][] = 'input-medium';
@@ -1525,10 +1655,19 @@ function fundraiser_donation_form(&$form, &$form_state) {
     $zip['#attributes']['class'][] = 'input-medium';
     $form = _fundraiser_update_form_field($form, 'zip', $zip);
 
-    // Add class to donation_other field
-    $other_amount = _fundraiser_get_form_field($form, 'other_amount');
-    $other_amount['#attributes']['class'][] = 'input-medium';
-    $form = _fundraiser_update_form_field($form, 'other_amount', $other_amount);
+    // Change ask amount labels.
+    $amount = _fundraiser_get_form_field($form, 'amount');
+    if (isset($amount) && !empty($amount)) {
+      if (isset($amount['#options'])) {
+        foreach ($amount['#options'] as $val => $label) {
+          $amount['#options'][$val] = str_replace('$', $symbol, $label);
+        }
+      }
+      else {
+        $amount['#field_prefix'] = $symbol;
+      }
+    }
+    $form = _fundraiser_update_form_field($form, 'amount', $amount);
 
     // Call hook to allow sub modules to add / manipulate the form.
     // NOTE: we are not using module_invoke_all on purpose here.
@@ -1645,13 +1784,13 @@ function _fundraiser_donation_submit_after_process($donation) {
 
 /**
  * Submit callback after donation submitted, but before confirmation.
+ *
+ * Provides a hook alter to allow for sub modules to change behavior after
+ * submission. Such as in cases of failures or the like.
  */
 function fundraiser_donation_post_submit(&$form, &$form_state) {
-  // And after all of that is done, provide a hook to allow for sub modules to change behavior after submission.
-  // Such as in cases of failures or the like. Return the donation object and result.
-  // We return form_state here, because we cannot pass arrays by reference in module calls.
-  // See: http://drupal.org/node/353494 for a detailed discussion of this one.
-  $form_state = module_invoke_all('fundraiser_donation_post_submit', $form, $form_state, $form_state['#donation']);
+
+  drupal_alter('fundraiser_donation_post_submit', $form, $form_state, $form_state['#donation']);
 }
 
 /**
@@ -1729,14 +1868,15 @@ function fundraiser_donation_create($donation) {
   else {
     $form_url = $base_url . '/node/' . $donation->nid;
   }
+
   $donation_record = array(
     'did' => $donation->did, // Donation id.
     'nid' => $donation->nid, // Fundraiser node id.
     'uid' => $donation->uid, // Submission user id.
     'sid' => $donation->sid, // Submission id.
     'status' => $donation->status,
-    'amount' => $donation->donation['amount'],
-    'currency' => $donation->donation['currency'],
+    'amount' => $donation->amount,
+    'currency' => $donation->currency,
     'txn_id' => '',
     'form_url' => $form_url,
     'created' => REQUEST_TIME,
@@ -1836,8 +1976,21 @@ function _fundraiser_donation_copy($donation) {
  * Donation processing, a given donation needs to be processed.
  */
 function fundraiser_donation_process($donation) {
+  // Create an array of values for the log.
+  $log = array(
+    'start' => microtime(TRUE),
+    'transaction_type' => 'charge',
+  );
+
   // Pass this down to the processing module.
   module_invoke_all('fundraiser_donation_process', $donation);
+
+  // Mark the end time of the processing.
+  $log['end'] = microtime(TRUE);
+
+  // Log the processing details.
+  fundraiser_log_donation_processing($donation, $log);
+
   // And save the donation as it is at this stage since it was created.
   // This makes sure that any changes made stay in place.
   fundraiser_donation_update($donation, FALSE);
@@ -1937,11 +2090,11 @@ function fundraiser_donation_cancel($donation) {
   $username = isset($user->name) ? $user->name : 'Anonymous';
   fundraiser_donation_comment($donation, 'This donation was cancelled on @date by @username.',
     array('@date' => format_date(strtotime('now')), '@username' => $username));
+  // Allow other modules to respond to the cancel. Including Ubercart, etc.
+  module_invoke_all('fundraiser_donation_cancel', $donation);
   // And save the donation as it is at this stage since it was created.
   // This makes sure that any changes made stay in place.
   fundraiser_donation_update($donation, FALSE);
-  // Allow other modules to respond to the cancel. Including Ubercart, etc.
-  module_invoke_all('fundraiser_donation_cancel', $donation);
 }
 
 /**
@@ -2025,6 +2178,7 @@ function fundraiser_donation_get_donation($did, $refresh = FALSE) {
   module_invoke_all('fundraiser_donation_get_donation', $donation);
   // Store the donation information into the cache.
   $donations[$did] = $donation;
+
   return $donation;
 }
 
@@ -2067,31 +2221,46 @@ function fundraiser_show_refund_form($did) {
  */
 function _fundraiser_refund_form($form, &$form_state, $did) {
   $form = array();
+
   // Given a donation ID, grab all relevant information to create the form.
   $donation = fundraiser_donation_get_donation($did);
-  $form['#donation'] = $form_state['#donation'] = $donation;
+  $form_state['donation_id'] = $donation->did;
+
   $form['payment_summary'] = array(
     '#type' => 'fieldset',
     '#title' => t('Payment Summary'),
     '#collapsible' => FALSE,
     '#collapsed' => FALSE,
   );
+
+  // Since we'll be doing math on these numbers we'll use the whole number values.
+  $order_wrapper = entity_metadata_wrapper('commerce_order', commerce_order_load($donation->did));
+  $order_total = $order_wrapper->commerce_order_total->value();
+
+  $donation_amount = $order_total['amount'];
   $refund_summary = array();
   $refunded_total = 0;
+
   if (is_array($donation->refunds)) {
     foreach ($donation->refunds as $refund) {
-      $refunded_total += abs($refund->amount);
-      $refund_summary[] = t('Refund #%id for $%amount on %date.',
+      // Convert the refunded amount to a whole number.
+      $refund_amount = commerce_currency_decimal_to_amount($refund->amount, $donation->currency);
+      $refunded_total += $refund_amount;
+      $refund_summary[] = t('Refund #%id for %amount on %date.',
         array(
-        '%id' => $refund->did,
-        '%amount' => abs($refund->amount),
-        '%date' => date('m/d/y', isset($refund->created) ? $refund->created : 0),
-      )
-      ); //TODO fix up value display for international.
+          '%id' => $refund->did,
+          '%amount' => commerce_currency_format($refund_amount, $donation->currency),
+          '%date' => date('m/d/y', isset($refund->created) ? $refund->created : 0),
+        )
+      );
     }
+
     $refund_summary = !empty($refund_summary) ? theme('item_list', array('items' => $refund_summary)) : t('No refunds have been made.');
-    $refunded_total = $refunded_total;
   }
+
+  // Set the able to refund value from the donation amount.
+  $able_to_refund = $donation_amount - $refunded_total;
+
   // Display form.
   if ($donation->refunds == FALSE) {
     $form['payment_summary']['no_payments'] = array(
@@ -2104,12 +2273,12 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
   $form['payment_summary']['payment_total'] = array(
     '#type' => 'item',
     '#title' => t('Payment Total'),
-    '#markup' => $donation->donation['amount'],
+    '#markup' => $donation->donation['amount_formatted'],
   );
   $form['payment_summary']['refunded_total'] = array(
     '#type' => 'item',
     '#title' => t('Refunded Total'),
-    '#markup' => $refunded_total,
+    '#markup' => commerce_currency_format($refunded_total, $donation->currency),
   );
   if (!empty($refund_summary)) {
     $form['payment_summary']['refunded_summary'] = array(
@@ -2118,6 +2287,7 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
       '#markup' => $refund_summary,
     );
   }
+
   // Form for submitting a refund.
   $form['refund_options'] = array(
     '#type' => 'fieldset',
@@ -2128,13 +2298,14 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
     '#collapsible' => FALSE,
     '#collapsed' => FALSE,
   );
+
   // Only show the refund form if the payment was made through a payment gateway that can handle refunds
   if (isset($donation->gateway)) { // Set during fundraiser_donation_get_donation().
     $can_refund = FALSE;
     if (!empty($donation->gateway['allow_refund']) && in_array($donation->donation['payment_method'], $donation->gateway['allow_refund'])) {
       $can_refund = TRUE;
     }
-    $able_to_refund = $donation->donation['amount'] - $refunded_total;
+
     if (!$can_refund || $able_to_refund <= 0) {
       // They've made a payment, but it cannot be refunded
       if ($able_to_refund <= 0) {
@@ -2162,14 +2333,22 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
     }
     // Provide refund options
     else {
+      $form['able_to_refund'] = array(
+        '#type' => 'value',
+        '#value' => $able_to_refund,
+      );
+      $form['refunded_total'] = array(
+        '#type' => 'value',
+        '#value' => $refunded_total,
+      );
       $form['refund_options']['refund_type'] = array(
         '#title' => t('Refund options'),
         '#type' => 'radios',
         '#options' => array(
-          'full' => t('Full Refund ( %amount )', array('%amount' => $able_to_refund . ' ' . $donation->currency)),
+          'full' => t('Full Refund ( %amount )', array('%amount' => commerce_currency_format($able_to_refund, $donation->currency))),
           'partial' => t('Partial Refund'),
         ),
-        '#default_value' => isset($form_state['input']['refund_type']) ? $form_state['input']['refund_type'] : 'full',
+        '#default_value' => 'full',
       );
       $form['refund_options']['amount'] = array(
         '#type' => 'textfield',
@@ -2181,7 +2360,6 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
             ':input[name="refund_type"]' => array('value' => 'partial'),
           ),
         ),
-        '#required' => TRUE,
       );
       $form['refund_options']['refund_notes'] = array(
         '#type' => 'textarea',
@@ -2196,14 +2374,6 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
         '#value' => t('Issue Refund'),
         '#required' => TRUE,
       );
-      $form['able_to_refund'] = array(
-        '#type' => 'hidden',
-        '#value' => number_format($able_to_refund, 2),
-      );
-      $form['refunded_total'] = array(
-        '#type' => 'hidden',
-        '#value' => number_format($refunded_total, 2),
-      );
     }
   }
   else {
@@ -2213,6 +2383,7 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
       '#suffix' => '</strong>',
     );
   }
+
   return $form;
 }
 
@@ -2220,34 +2391,49 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
  * Validate the form
  */
 function _fundraiser_refund_form_validate($form, &$form_state) {
-  // Dunno why, but values isn't picking it up.
-  $form_state['values'] = isset($form_state['input']) ? $form_state['input'] : $form_state['values'];
   // Get the donation.
-  $donation = $form['#donation'];
-  // If it isn't a full refund, make sure they entered a valid value
+  $donation = fundraiser_donation_get_donation($form_state['donation_id']);
+
+  // Variables for tracking the refund type and amounts.
   $refund_type = $form_state['values']['refund_type'];
+  $able_to_refund = $form_state['values']['able_to_refund'];
+  $refund_amount = 0;
+
   if (empty($refund_type)) {
     form_set_error('refund_type', t('Select a type for the refund.'));
   }
+
+  // A full refund uses the $able_to_refund amount, a partial refund needs to validate the entered amount.
   if ($refund_type != 'full') {
-    $amount = (float) $form_state['values']['amount'];
+    // Convert the entered amount to a whole number.
+    $amount = commerce_currency_decimal_to_amount(_fundraiser_amount_value_sanitize($form_state['values']['amount']), $donation->currency);
+
     if ($amount <= 0) {
       form_set_error('amount', t('Enter a positive numerical refund amount.'));
     }
     else {
-      $refunded_total = (float) $form_state['values']['refunded_total'];
-      // Determine how much has been paid, less previous refunds
-      $able_to_refund = $donation->donation['amount'] - $refunded_total;
+      // Check if the amount set to refund is less than the amount left to refund.
       if ($amount > $able_to_refund) {
         $context = array(
           'revision' => 'formatted-original',
           'type' => 'amount',
         );
         form_set_error('amount', t('The refund amount entered is too high. Only @paid in payments have been made, and no ' .
-          'more than that can be refunded.', array('@paid' => $able_to_refund)));
+          'more than that can be refunded.', array('@paid' => commerce_currency_format($able_to_refund, $donation->currency))));
+      }
+      else {
+        // Add the amount to refund to the form_state values.
+        $refund_amount = $amount;
       }
     }
   }
+  else {
+    // Add the full amount to the form_state values.
+    $refund_amount = $able_to_refund;
+  }
+
+  $form_state['values']['refund_amount'] = commerce_currency_amount_to_decimal($refund_amount, $donation->currency);
+
   $refund_notes = $form_state['values']['refund_notes'];
   if (empty($refund_notes)) {
     form_set_error('refund_notes', t('Please enter a reason for the refund.'));
@@ -2259,31 +2445,14 @@ function _fundraiser_refund_form_validate($form, &$form_state) {
  */
 function _fundraiser_refund_form_submit($form, &$form_state) {
   // Get the donation.
-  $donation = $form['#donation'];
-  // Determine how much has been paid, less previous refunds
-  $refunded_total = (float) $form_state['values']['refunded_total'];
-  $able_to_refund = $donation->donation['amount'] - $refunded_total;
-  // Partial refund
-  if ($form_state['values']['refund_type'] != 'full') {
-    $amount = (float) $form_state['values']['amount'];
-    $new_status = 'partially_refunded';
-    // Can't refund more than they've paid
-    // Use >= so that the status is set properly if they choose Partial Refund.
-    if ($amount >= $able_to_refund) {
-      $amount = $able_to_refund;
-      $new_status = 'refunded';
-    }
-  }
-  // Full refund
-  else {
-    $amount = $able_to_refund;
-    $new_status = 'refunded';
-  }
+  $donation = fundraiser_donation_get_donation($form_state['donation_id']);
+
+  $new_status = 'refunded';
 
   // Set up the refund.
   $refund = new stdClass();
   $refund->did = $donation->did;
-  $refund->amount = $amount;
+  $refund->amount = $form_state['values']['refund_amount'];
   $refund->currency = $donation->currency;
   $refund->reason = $form_state['values']['refund_notes'];
   $refund = fundraiser_refund_create($refund);
@@ -2703,7 +2872,7 @@ function _fundraiser_update_fundraiser($fundraiser) {
     // And invoke the hooks for all the other modules to respond.
     module_invoke_all('fundraiser_update_fundraiser_alter', (object) $fundraiser);
     // Fire a hook that other modules can use to add additional processing when a donation form is created.
-    // Called in: fundraiser_multi_currency.module, sf_donation.module
+    // Called in sf_donation.module
     // This can, and should, be replaced with hook_node_insert() implementations.
     // THIS HOOK IS TO BE DEPR.
     // module_invoke_all('fundraiser_form_insert', $node, $components);
@@ -3010,8 +3179,8 @@ function fundraiser_webform_token_selector_blacklist_alter(&$tokens) {
  */
 function fundraiser_get_total_donations_by_nids($nids, $start = FALSE, $end = FALSE) {
   $total_donations = module_invoke_all('fundraiser_get_total_donations_by_nids', $nids, $start, $end);
-  // Use the first implementation called.  There should only be one anyway.
-  return $total_donations[0];
+  $total = isset($total_donations[0]) ? $total_donations[0] : FALSE;
+  return $total;
 }
 
 /**
@@ -3246,4 +3415,154 @@ function _fundraiser_gateway_status_alert($nodes, $method_type, $gateway_id, $st
     watchdog('fundraiser', 'A test mode gateway configuration has been detected on a live donation form. Gateway: %gateway. Type: %type, Donation forms: %nodes', array('%gateway' => $gateway_id, '%type' => $method_type, '%nodes' => $nodes), WATCHDOG_EMERGENCY);
 
   }
+}
+
+/**
+ * Get the relevant currency data array from a donation enabled node.
+ *
+ * @param stdClass $node
+ *   The donation enabled node.
+ *
+ * @param array
+ *   The currency data as an associative array. Includes keys such as 'name',
+ *   'code', 'symbol', and others provided by Drupal Commerce.
+ */
+function fundraiser_get_currency_from_node($node) {
+  try {
+    // See if we have the currency field on the node.
+    // If we don't then entity_metadata_wrapper will throw an exception.
+    $wrapper = entity_metadata_wrapper('node', $node);
+    $currency_code = $wrapper->field_fundraiser_currency->value();
+
+    $currency = commerce_currency_load($currency_code);
+    // If that currency doesn't exist, use the site default.
+    if (!is_array($currency)) {
+      $currency = commerce_currency_load();
+    }
+  }
+  catch (Exception $e) {
+    // Load the default currency as set by Commerce.
+    $currency = commerce_currency_load();
+  }
+
+  return $currency;
+}
+
+/**
+ * Retrieves and formats the currencies for a form select element.
+ *
+ * @return array
+ *   The options array for a select form element.
+ */
+function fundraiser_currency_field_get_currency_options() {
+  $options = array();
+
+  foreach (commerce_currencies(TRUE, TRUE) as $currency_code => $currency) {
+    $options[$currency_code] = t('@code - !name', array('@code' => $currency['code'], '!name' => $currency['name']));
+
+    if (!empty($currency['symbol'])) {
+      $options[$currency_code] .= ' - ' . check_plain($currency['symbol']);
+    }
+  }
+
+  return $options;
+}
+
+/**
+ * Implements hook_springboard_admin_alias_patterns().
+ */
+function fundraiser_springboard_admin_alias_patterns() {
+  return array(
+    'admin/commerce/config/currency' => array(
+      'path' => array(
+        'regex' => '|^/admin/commerce/config/currency|',
+        'replacement' => 'admin/commerce/config/currency',
+      ),
+      'alias' => array(
+        'regex' => '|^springboard/settings/config/currency|',
+        'replacement' => 'springboard/settings/config/currency',
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_springboard_admin_admin_menu_items_alter().
+ */
+function fundraiser_springboard_admin_admin_menu_items_alter(&$items) {
+  $items['admin/springboard/settings']['_children']['admin/springboard/settings/config']['_children']['admin/commerce/config/currency'] = array(
+    'link_path' => 'admin/commerce/config/currency',
+    'link_title' => 'Manage Currencies',
+    'menu_name' => 'springboard_admin_menu',
+    'expanded' => 0,
+    'customized' => 1,
+    'weight' => 0,
+  );
+}
+
+/**
+ * Log that a donation has processed and some other details for Log Analysis.
+ *
+ * @param object $donation
+ *   The donation object.
+ * @param array $log
+ *   Additional log details, should include start/end times, and the type of transaction: charge, refund.
+ */
+function fundraiser_log_donation_processing($donation, $log = array()) {
+  // Calculate the execution time.
+  $exec_time = round($log['end'] - $log['start'], 4);
+
+  // Setup the gateway details, the gateway name and config (rule name) are contained in the id.
+  list($gateway, $gateway_config) = explode('|', $donation->gateway['id']);
+
+  $pieces = array(
+    'datetime',
+    'category',
+    'unique_transaction_id',
+    'client_identifier',
+    'payment_gateway',
+    'payment_gateway_config',
+    'transaction_type',
+    'transaction_total_exec_time',
+    'donation_value',
+    'donation_currency',
+    'country',
+    'origin_ip',
+    'success',
+    'reference_charge',
+  );
+
+  $message = '|%' . implode('|%', $pieces);
+
+  $variables = array(
+    '%datetime' => date('c', $log['start']),
+    '%category' => 'INFO',
+    '%unique_transaction_id' => $donation->did,
+    '%client_identifier' => $donation->uid,
+    '%payment_gateway' => $gateway,
+    '%payment_gateway_config' => $gateway_config,
+    '%transaction_type' => $log['transaction_type'],
+    '%transaction_total_exec_time' => $exec_time,
+    '%donation_value' => !empty($donation->donation['amount']) ? $donation->donation['amount'] : '0.00',
+    '%donation_currency' => !empty($donation->donation['currency']['code']) ? $donation->donation['currency']['code'] : 'N/A',
+    '%country' => !empty($donation->donation['country']) ? $donation->donation['country'] : 'N/A',
+    '%origin_ip' => ip_address(),
+    '%success' => isset($donation->result['success']) ? (int) $donation->result['success'] : 0,
+    '%reference_charge' => isset($donation->reference_charge) ? (int) $donation->reference_charge : 0,
+  );
+
+  watchdog('fundraiser_donation_tracker', $message, $variables, WATCHDOG_INFO);
+}
+
+/**
+ * Clean up the input for an amount field.
+ *
+ * @param string $amount
+ *   The amount entered from the submission.
+ *
+ * @return string
+ *   The input amount stripped of any values other than a decimal point.
+ */
+function _fundraiser_amount_value_sanitize($amount) {
+  return preg_replace('/[^\d\.]/i', '', $amount);
 }

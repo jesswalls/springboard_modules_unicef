@@ -643,7 +643,12 @@ class SalesforceSync {
 
           case 'datetime':
             // Salesforce requires ISO 8601 format for dates.
-            $item->sobject->fields[$field_name] = date('c', strtotime($value));
+            if ($this->isValidTimestamp($value)) {
+              $item->sobject->fields[$field_name] = date('c', $value);
+            }
+            elseif ($value != '') {
+              $item->sobject->fields[$field_name] = date('c', strtotime($value));
+            }
             break;
 
           case 'date':

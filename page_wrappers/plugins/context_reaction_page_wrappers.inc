@@ -22,7 +22,7 @@ class context_reaction_page_wrappers extends context_reaction {
   function options_form($context) {
 
     $wrappers = _page_wrappers_available_wrappers();
-    $options = (isset($wrappers)) ? $wrappers : array('No page wrappers created');
+    $options = (!empty($wrappers)) ? array('' => t('-- Select --')) + $wrappers : array('No page wrappers created');
 
     $settings = $this->fetch_from_context($context);
 
@@ -40,6 +40,17 @@ class context_reaction_page_wrappers extends context_reaction {
     );
     return $form;
   }
+
+
+  function options_form_submit($values) {
+    // Set an error if no page wrapper value has been selected.
+    if (empty($values['page_wrapper'])) {
+      form_set_error('reactions[plugins][page_wrappers][page_wrapper', t('Please select a Page Wrapper.'));
+    }
+
+    return parent::options_form_submit($values);
+  }
+
 
   /**
    * Return the page wrapper based on the context

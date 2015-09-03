@@ -406,18 +406,28 @@ function page_wrappers_form_node_form_alter(&$form, $form_state, $form_id) {
         $wrappers_count = empty($configurations) ? 1 : count($configurations);
       }
 
-      $form['page_wrappers_settings'] = array(
+      // Share the "Display" fieldset with related modules (e.g., Form Layouts).
+      if (empty($form['springboard_display'])) {
+        $form['springboard_display'] = array(
+            '#type' => 'fieldset',
+            '#title' => t('Display settings'),
+            '#collapsible' => TRUE,
+            '#collapsed' => FALSE,
+            '#group' => 'additional_settings',
+        );
+      }
+
+      $form['springboard_display']['page_wrappers_settings'] = array(
         '#type' => 'fieldset',
         '#title' => t('Page wrapper settings'),
         '#description' => t('Add, remove and configure page wrappers for this node.'),
         '#collapsible' => TRUE,
-        '#collapsed' => TRUE,
+        '#collapsed' => FALSE,
         '#tree' => FALSE,
-        '#group' => 'additional_settings',
       );
 
       // Container for just the poll choices.
-      $form['page_wrappers_settings']['page_wrappers'] = array(
+      $form['springboard_display']['page_wrappers_settings']['page_wrappers'] = array(
         '#prefix' => '<div id="page-wrappers-assignments">',
         '#suffix' => '</div>',
         '#theme' => 'page_wrappers_node_assignments',
@@ -433,7 +443,7 @@ function page_wrappers_form_node_form_alter(&$form, $form_state, $form_id) {
         $delta = count($configurations);
         foreach ($configurations as $pwid => $config) {
           $key = 'pwid:' . $pwid;
-          $form['page_wrappers_settings']['page_wrappers'][$key] = _page_wrappers_assignment_fields($key, $config, $wrappers, $rulesets, $config['weight'], $wrappers_count);
+          $form['springboard_display']['page_wrappers_settings']['page_wrappers'][$key] = _page_wrappers_assignment_fields($key, $config, $wrappers, $rulesets, $config['weight'], $wrappers_count);
           $weight = max($config['weight'], $weight);
         }
       }
@@ -443,12 +453,12 @@ function page_wrappers_form_node_form_alter(&$form, $form_state, $form_id) {
       for ($delta; $delta < $wrappers_count; $delta++) {
         $key = 'new:' . ($delta - $existing_delta);
         $weight++;
-        $form['page_wrappers_settings']['page_wrappers'][$key] = _page_wrappers_assignment_fields($key, array(), $wrappers, $rulesets, $weight, $wrappers_count);
+        $form['springboard_display']['page_wrappers_settings']['page_wrappers'][$key] = _page_wrappers_assignment_fields($key, array(), $wrappers, $rulesets, $weight, $wrappers_count);
       }
 
       // If we have configured rulesets add the add more button
       if (!empty($rulesets)) {
-        $form['page_wrappers_settings']['page_wrappers_more'] = array(
+        $form['springboard_display']['page_wrappers_settings']['page_wrappers_more'] = array(
           '#type' => 'submit',
           '#value' => t('Add Another'),
           '#weight' => 1,
@@ -461,7 +471,7 @@ function page_wrappers_form_node_form_alter(&$form, $form_state, $form_id) {
           ),
         );
         // Add a flag to the page wrapper fieldset that we have rulesets
-        $form['page_wrappers_settings']['page_wrappers']['#has_rulesets'] = TRUE;
+        $form['springboard_display']['page_wrappers_settings']['page_wrappers']['#has_rulesets'] = TRUE;
       }
     }
   }
@@ -501,7 +511,7 @@ function page_wrapper_add_assignment_submit($form, &$form_state) {
 }
 
 function page_wrappers_og_ajax_callback($form, $form_state) {
-  return $form['page_wrappers_settings']['page_wrappers']['wrapper_nid'];
+  return $form['springboard_display']['page_wrappers_settings']['page_wrappers']['wrapper_nid'];
 }
 
 /**
@@ -513,7 +523,7 @@ function page_wrappers_og_ajax_callback($form, $form_state) {
  * @see page_wrapper_add_assignment_submit()
  */
 function _page_wrappers_add_js($form, $form_state) {
-  return $form['page_wrappers_settings'][$form['#page_wrapper_config_parent']];
+  return $form['springboard_display']['page_wrappers_settings'][$form['#page_wrapper_config_parent']];
 }
 
 /**
@@ -534,7 +544,7 @@ function _page_wrappers_assignment_fields($key, $config = array(), $wrappers, $r
     '#prefix' => '<div id="page-wrappers-wrapper-options">',
     '#suffix' => '</div>',
     '#default_value' => (!empty($config['wrapper_nid'])) ? $config['wrapper_nid'] : '',
-    '#options' => $wrappers,
+    '#options' => array('' => t('-- Select --')) + $wrappers,
     '#description' => t('Select a page wrapper to use when displaying this node.'),
     '#parents' => array($parent, $key, 'wrapper_nid'),
     '#attributes' => array('class' => array('page-wrappers-wrapper-select')),
@@ -646,13 +656,13 @@ function theme_page_wrappers_node_assignments($variables) {
 function page_wrappers_file_insert($file) {
 
   //add timestamps to files and rename js files, do not do this on clone process
-  if (arg(2) != 'clone' && isset($file->source) && ($file->source == 'page_wrappers_js_und_0' || $file->source == 'page_wrappers_css_und_0')) {
+  if (arg(2) != 'clone' && isset($file->source) && (strpos($file->source, 'page_wrappers_js_und_') === 0 || strpos($file->source, 'page_wrappers_css_und_') === 0)) {
 
     $dir = drupal_dirname($file->uri);
     $filename = _page_wrappers_add_timestamp($file->filename);
 
     // for .js files, strip off the .txt extension that gets added
-    if ($file->source == 'page_wrappers_js_und_0') {
+    if (strpos($file->source, 'page_wrappers_js_und_') === 0) {
       $filename = substr($filename, 0, strlen($filename) - 4);
     }
 
@@ -708,7 +718,6 @@ function _page_wrappers_available_wrappers() {
 
   $result = db_query("SELECT n.title, n.nid FROM {node} n WHERE type = 'page_wrapper'")->fetchAll();
   if (!empty($result)) {
-    $wrappers = array(t('-- Select --'));
     foreach ($result as $data) {
       $wrappers[$data->nid] = $data->title;
     }
@@ -911,7 +920,7 @@ function _page_wrappers_create_template($node) {
 
   if (empty($filename)) {
     // create a template file name based on title
-    $filename = 'page--' . strtolower(str_replace(' ', '-', $node->title)) . '-' . time() . '.tpl.php'; // TODO: Better filename creator
+    $filename = page_wrappers_format_filename($node->title);
   }
 
   $full_path = $base_path . '/tpl';
@@ -951,6 +960,30 @@ function _page_wrappers_create_template($node) {
 
   return FALSE;
 
+}
+
+/**
+ * Formats the node title for a page wrapper template filename.
+ *
+ * Uses transliteration cleaning when available.
+ *
+ * @param string $title
+ *   The page wrapper node title.
+ *
+ * @return string
+ *   The clean filename for the page wrapper template file.
+ */
+function page_wrappers_format_filename($title) {
+  $name = str_replace(' ', '-', $title) . '-' . REQUEST_TIME . '.tpl.php';
+
+  if (module_exists('transliteration')) {
+    $name = transliteration_clean_filename($name, language_default('language'));
+  }
+  else {
+    $name = drupal_strtolower(preg_replace('![^0-9A-Za-z_.-]!', '', $name));
+  }
+
+  return 'page--' . $name;
 }
 
 /**
@@ -1252,15 +1285,24 @@ function page_wrappers_check() {
   if (module_exists('context')) {
     $contexts = context_active_contexts();
     foreach ($contexts as $context) {
-      // Check if page_wrapper is a reaction for this context
-      if (isset($context->reactions['page_wrappers'])) {
-        $wrapper = array(
-          'wrapper_nid' => $context->reactions['page_wrappers']['page_wrapper'],
-          'ruleset' => 1,
-          'weight' => -20,
-        );
-        if ($node) {
-          $wrapper['nid'] = $node->nid;
+      // Check if page_wrapper is a reaction for this context and that the wrapper is set.
+      if (
+        isset($context->reactions['page_wrappers'])
+        && !empty($context->reactions['page_wrappers']['page_wrapper'])
+      ) {
+        // Ensure the page wrapper node exists.
+        $page_wrapper_node = node_load($context->reactions['page_wrappers']['page_wrapper']);
+        if ($page_wrapper_node) {
+          $wrapper = array(
+            'wrapper_nid' => $page_wrapper_node->nid,
+            'ruleset' => 1,
+            'weight' => -20,
+          );
+
+          // If there was a node include that.
+          if ($node) {
+            $wrapper['nid'] = $node->nid;
+          }
         }
       }
     }

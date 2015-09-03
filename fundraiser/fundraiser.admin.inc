@@ -72,6 +72,12 @@ function fundraiser_admin_settings($form, &$form_state) {
     '#default_value' => variable_get('fundraiser_log_comments', 0),
     '#description' => t('Log comments made on donations to watchdog.'),
   );
+  $form['fundraiser']['fundraiser_log_local_validation_errors'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Log local validation errors'),
+    '#default_value' => variable_get('fundraiser_log_local_validation_errors', FALSE),
+    '#description' => t('Log validation errors on donation forms to watchdog.'),
+  );
   $gateways = _fundraiser_gateway_info();
   if (empty($gateways)) {
     $form['fundraiser']['fundraiser_gateway_config'] = array(

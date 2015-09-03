@@ -1,0 +1,15 @@
+#sba-undeliverable-messages-container,
+#sba-delivered-messages-container {
+    margin-bottom:1em;
+}
+.sba-undeliverable-messages-message {
+    margin: 1em;
+}
+.sba-undeliverable-messages-message-subject,
+.sba-undeliverable-message-body {
+    margin: 1.2em;
+}
+
+.sba-undeliverable-messages-message-subject {
+    margin-top: 0em;
+}

@@ -1,0 +1,33 @@
+.queue-overview-container .span3 {
+    text-align:center;
+}
+
+.queue-overview-container .span4 {
+    text-align:center;
+}
+
+.queue-overview-container .text-info {
+    font-size:35px;
+}
+
+.description {
+    display: block;
+    clear:both;
+}
+
+#sba-message-action-queues-form {
+    margin-bottom: 0 !important;
+}
+
+.form-type-radio label {
+    float: left;
+    display: inline;
+    margin-right: 20px !important;
+}
+
+.form-type-radio input {
+    float: left;
+    display: inline;
+    margin-right: 3px !important;
+    margin-top: 4px !important;
+}

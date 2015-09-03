@@ -32,7 +32,7 @@
           else {
             var total = $('select[name*="quantity"]').val() * amount;
           }
-          $('select[name*="quantity"]').after('<span id="quantity-total">Total: $' + total + '</span>');
+          $('select[name*="quantity"]').after('<span id="quantity-total">Total: ' + Drupal.settings.fundraiser.currency.symbol + total + '</span>');
         }
 
         // When the amount changes, change the displayed total.
@@ -64,8 +64,12 @@
 
         // Custom zipcode validation
         $.validator.addMethod('zipcode', function(value, element) {
-          // U.S. or Canadian Zip codes
-          return this.optional(element) || /(^\d{5}((-|\s)\d{4})?$)|(^[ABCEGHJKLMNPRSTVXY]{1}\d{1}[A-Z]{1} *\d{1}[A-Z]{1}\d{1}$)/i.test(value);
+          // Validate zip code when country is US.
+          var country_field = $(':input[name*="[country]"]');
+          if (country_field.length && country_field.val() == 'US') {
+            return this.optional(element) || /(^\d{5}((-|\s)\d{4})?$)|(^[ABCEGHJKLMNPRSTVXY]{1}\d{1}[A-Z]{1} *\d{1}[A-Z]{1}\d{1}$)/i.test(value);
+          }
+          return true;
         }, "Enter a valid zipcode");
 
         // Instantiate Form Validation

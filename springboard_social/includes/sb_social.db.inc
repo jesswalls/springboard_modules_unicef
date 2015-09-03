@@ -589,15 +589,17 @@ function sb_social_update_sf_share_id($item, $record) {
  *   Returns the current sfid or 0 if none found.
  */
 function _sb_social_get_opportunity_id_from_submission_id($sid) {
-  $result = db_query('
-    SELECT
-      s.sfid
-    FROM {salesforce_sync_map} s
-    INNER JOIN {fundraiser_donation} f
-      ON f.did = s.drupal_id
-    WHERE f.sid = :sid', array(':sid' => $sid));
-  $sfid = $result->fetchField();
-  return $sfid ? $sfid : 0;
+  if (module_exists('salesforce_sync')) {
+    $result = db_query('
+      SELECT
+        s.sfid
+      FROM {salesforce_sync_map} s
+      INNER JOIN {fundraiser_donation} f
+        ON f.did = s.drupal_id
+      WHERE f.sid = :sid', array(':sid' => $sid));
+    $sfid = $result->fetchField();
+  }
+  return !empty($sfid) ? $sfid : 0;
 }
 
 /**

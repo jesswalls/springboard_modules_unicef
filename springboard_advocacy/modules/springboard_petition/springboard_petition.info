@@ -1,0 +1,6 @@
+name = Springboard Petition
+description = Petition functionality for Springboard Advocacy
+core = 7.x
+package = Springboard Advocacy
+dependencies[] = springboard_advocacy
+dependencies[] = webform_user

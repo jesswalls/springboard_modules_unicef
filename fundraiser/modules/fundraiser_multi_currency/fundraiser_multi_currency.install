@@ -1,7 +1,11 @@
 <?php
 /**
  * @file
- * Install, update and uninstall functions for the fundraiser_multi_currency module.
+ * The schema for the multi currency module.
+ *
+ * This module is deprecated. The schema is here so fundraiser can uninstall it.
+ * After it's been in this state for long enough, this module will be removed
+ * entirely.
  */
 
 /**
@@ -39,48 +43,6 @@ function fundraiser_multi_currency_schema() {
     'primary key' => array('currency_id'),
   );
   return $schema;
-}
-
-/**
- * Implements hook_install().
- */
-function fundraiser_multi_currency_install() {
-  _fundraiser_multi_currency_insert_defaults();
-}
-
-/**
- * Implements hook_uninstall().
- */
-function fundraiser_multi_currency_uninstall() {
-  drupal_set_message(t('Nodes that previously had a currancy field - still do. Be sure to update your donation forms.'));
-}
-
-/**
- * Insert default available currancies.
- */
-function _fundraiser_multi_currency_insert_defaults() {
-  $ret = array();
-  $currencies[] =  array(
-    'symbol' => '$',
-    'code' => 'USD',
-    'name' => 'US Dollars',
-  );
-  $currencies[] =  array(
-    'symbol' => '€',
-    'code' => 'EUR',
-    'name' => 'Euros',
-  );
-  $currencies[] =  array(
-    'symbol' => '£',
-    'code' => 'GBP',
-    'name' => 'UK Pounds',
-  );
-  foreach ($currencies as $record) {
-    if (!db_query('SELECT 1 FROM {fundraiser_currencies} WHERE code = :code', array(':code' => $record['code']))->fetchField()) {
-      //drupal_write_record('fundraiser_currencies', $record); Not using write record here per doc.
-      db_insert('fundraiser_currencies')->fields($record)->execute();
-    }
-  }
 }
 
 /**

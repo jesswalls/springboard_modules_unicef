@@ -1,0 +1,530 @@
+<?php
+/**
+ * @file
+ * Sets up the springboard message action module and content type.
+ */
+
+/**
+ * Implements hook_schema().
+ *
+ * Table to save confirmations.
+ */
+function sba_message_action_schema() {
+
+  // Store a unique ID for use with advocacy server.
+  $schema['sba_message_action_confirm'] = array(
+    'description' => 'Store message action confirmation state.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'messages node id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'custom_confirmation' => array(
+        'description' => 'confirmation toggle state',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'fail_message' => array(
+        'description' => 'confirmation fail message',
+        'type' => 'text',
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+
+  // Opt in tracking table.
+  $schema['springboard_action_opt_in'] = array(
+    'description' => 'Store message action optin.',
+    'fields' => array(
+      'sid' => array(
+        'description' => 'Webform submission id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'nid' => array(
+        'description' => 'Message action node id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'uid' => array(
+        'description' => 'Signer user id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'opt_in' => array(
+        'description' => 'Track user opt-in to show their signature per message action.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'description' => 'Submission timestamp',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('sid'),
+  );
+
+  // Opt in tracking table.
+  $schema['springboard_action_opt_in_block'] = array(
+    'description' => 'Store message action optin.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'Message action node id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'visibility' => array(
+        'description' => 'Track user opt-in to show their signature per message action.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+
+  $schema['cache_deliverability_report'] = drupal_get_schema_unprocessed('system', 'cache');
+  $schema['cache_deliverability_report']['description'] = 'Cache table for deliverability information about specific message action nodes.';
+  $schema['cache_deliverability_target'] = drupal_get_schema_unprocessed('system', 'cache');
+  $schema['cache_deliverability_target']['description'] = 'Cache table for deliverability information about specific message action targets.';
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function sba_message_action_install() {
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install');
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_taxonomy');
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_examples');
+
+  _sba_message_action_create_content_type();
+  _sba_message_action_install_vocab_sba_legislative_issues();
+  _sba_message_action_create_example_message_action();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function sba_message_action_uninstall() {
+  // Delete email_wrapper nodes.
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install');
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_fields');
+
+  _sba_message_action_delete_nodes();
+  // Remove fields implemented by this module.
+  // _sba_message_action_delete_fields();
+  // Delete the message action content type.
+  node_type_delete('sba_message_action');
+  field_purge_batch(1000);
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_taxonomy');
+  _sba_message_action_delete_legislative_vocab();
+
+}
+
+
+function sba_message_action_enable() {
+  // This is for sites upgraded from 4.7
+  // in case actions was experimentally enabled then disabled
+  // without completely uninstalling
+  // we need to recreate the taxonomy that
+  // springboard_advocacy_update_7007() deletes.
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_taxonomy');
+  _sba_message_action_install_vocab_sba_legislative_issues();
+}
+
+/**
+ * Rename alert var to action.
+ */
+function sba_message_action_update_7001() {
+  $types = variable_get('springboard_advocacy_alert_types', array(''));
+  variable_set('sba_action_types', $types);
+  variable_del('springboard_advocacy_alert_types');
+}
+
+/**
+ * Add message action confirmation table.
+ */
+function sba_message_action_update_7002() {
+  $schema = module_invoke('sba_message_action', 'schema');
+  if (db_table_exists('sba_message_action_confirm') == FALSE) {
+    db_create_table('sba_message_action_confirm', $schema['sba_message_action_confirm']);
+  }
+}
+/**
+ * Add message action confirmation table fail message field.
+ */
+function sba_message_action_update_7003() {
+  $schema = module_invoke('sba_message_action', 'schema');
+  if (db_field_exists('sba_message_action_confirm', 'fail_message') == FALSE) {
+    db_add_field('sba_message_action_confirm', 'fail_message', $schema['sba_message_action_confirm']['fields']['fail_message']);
+  }
+}
+
+/**
+ * Create call to action field, make body field required.
+ */
+function sba_message_action_update_7004() {
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_fields');
+  _sba_message_action_create_node_fields(TRUE);
+  $instance_info = field_read_instance('node', 'body', 'sba_message_action');
+  $instance_info['required'] = 1;
+  field_update_instance($instance_info);
+}
+
+/**
+ * Update description of the test mode field.
+ */
+function sba_message_action_update_7005() {
+  $field = field_info_instance('node', 'field_test_mode_email', 'sba_message_action');
+  if ($field) {
+    $field['description'] = t(
+      'Enter an email address for test mode. Test messages will be sent to this address instead of to the configured targets.'
+    );
+    field_update_instance($field);
+  }
+}
+
+/**
+ * Namespace the test_mode fields.
+ */
+function sba_message_action_update_7006() {
+
+  $names = array(
+    'field_test_mode' => 'field_sba_test_mode',
+    'field_test_mode_email' => 'field_sba_test_mode_email',
+  );
+
+  foreach ($names as $old_name => $new_name) {
+    if (db_table_exists('field_data_' . $old_name)) {
+
+      // Get the "value" and "format" storage column names.
+      $field_info = field_info_field($old_name);
+      $storage = $field_info['storage']['details'];
+
+      // Rename the value and format fields and reset the indexes.
+      foreach ($storage['sql']['FIELD_LOAD_CURRENT'] as $field) {
+        foreach ($field as $key => $old_storage_column) {
+
+          // Drop indexes.
+          db_drop_index('field_data_' . $old_name, $old_storage_column);
+          db_drop_index('field_revision_' . $old_name, $old_storage_column);
+
+          // Rename storage columns.
+          $spec = $field_info['columns'][$key];
+          $new_storage_column = $new_name . '_' . $key;
+          db_change_field(
+            'field_data_' . $old_name,
+            $old_storage_column,
+            $new_storage_column,
+            $spec,
+            array('indexes' => array($new_storage_column => array($new_storage_column)))
+          );
+          db_change_field(
+            'field_revision_' . $old_name,
+            $old_storage_column,
+            $new_storage_column,
+            $spec,
+            array('indexes' => array($new_storage_column => array($new_storage_column)))
+          );
+        }
+      }
+
+      // Rename the tables.
+      db_rename_table('field_data_' . $old_name, 'field_data_' . $new_name);
+      db_rename_table('field_revision_' . $old_name, 'field_revision_' . $new_name);
+
+      // Update the config records with the new names.
+      db_update('field_config')->fields(array('field_name' => $new_name))
+        ->condition('field_name', $old_name)
+        ->execute();
+      db_update('field_config_instance')->fields(array('field_name' => $new_name))
+        ->condition('field_name', $old_name)
+        ->execute();
+
+    }
+  }
+
+  // Namespace the field group.
+  $field_group = field_group_load_field_group('group_test_mode', 'node', 'sba_message_action', 'form');
+  $table = 'field_group';
+
+  // If the group exists make sure its not disabled.
+  if ($field_group) {
+    $field_group->identifier = 'group_sba_test_mode|node|sba_message_action|form';
+    $field_group->group_name = 'group_sba_test_mode';
+    $field_group->children = array('field_sba_test_mode', 'field_sba_test_mode_email');
+    ctools_export_crud_save($table, $field_group);
+  }
+}
+
+/**
+ * Reorder field weights on edit form.
+ */
+function sba_message_action_update_7007() {
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install');
+  _sba_message_action_reorder_internal_name();
+}
+
+/**
+ * Add user edit flag to existing actions.
+ */
+function sba_message_action_update_7008() {
+
+  $nodes = db_query('select n.nid from {node} n
+    WHERE n.type = :type',
+    array(':type' => 'sba_message_action')
+  );
+
+  foreach ($nodes as $node) {
+
+    $nid = db_query('select nid from {webform_component}
+      WHERE nid = :nid AND form_key = :key',
+      array(':nid' => $node->nid, ':key' => 'sba_user_edit_flag')
+    )->fetchField();
+
+    if (!$nid) {
+      $field = array(
+        'nid' => $node->nid,
+        'form_key' => 'sba_user_edit_flag',
+        'pid' => 0,
+        'name' => t('User Edit Flag'),
+        'type' => 'hidden',
+        'value' => 0,
+        'weight' => 13,
+        'email' => 1,
+      );
+      webform_component_insert($field);
+    }
+  }
+}
+
+
+/**
+ * Enable springboard_taxonomy dependency.
+ */
+function sba_message_action_update_7009() {
+  if (!module_exists('springboard_taxonomy')) {
+    module_enable(array('springboard_taxonomy'));
+  }
+}
+
+/**
+ * Add message action to taxonomy node types.
+ */
+function sba_message_action_update_7010() {
+  $taxonomy_types = variable_get('springboard_taxonomy_node_types', array());
+  $taxonomy_types = array_merge($taxonomy_types, array('sba_message_action' => 'sba_message_action'));
+  variable_set('springboard_taxonomy_node_types', array_unique($taxonomy_types));
+}
+
+/**
+ * Install legislative issues vocabulary if missing.
+ */
+function sba_message_action_update_7011() {
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_taxonomy');
+  _sba_message_action_install_vocab_sba_legislative_issues();
+  _sba_message_action_install_taxonomy_fields();
+}
+
+/**
+ * Install deliverable_message_count if missing.
+ */
+function sba_message_action_update_7012() {
+
+  $nodes = db_query('select n.nid from {node} n
+    WHERE n.type = :type',
+    array(':type' => 'sba_message_action')
+  );
+
+  foreach ($nodes as $node) {
+    $nid = db_query('select nid from {webform_component}
+      WHERE nid = :nid AND form_key = :key',
+      array(':nid' => $node->nid, ':key' => 'sba_deliverable_count')
+    )->fetchField();
+
+    if (!$nid) {
+      $field = array(
+        'nid' => $node->nid,
+        'form_key' => 'sba_deliverable_count',
+        'pid' => 0,
+        'name' => t('Messages Generated'),
+        'type' => 'hidden',
+        'value' => 0,
+        'weight' => 13,
+        'email' => 1,
+      );
+      webform_component_insert($field);
+    }
+  }
+}
+
+/**
+ * Install zip+4 profile field and component if missing.
+ */
+function sba_message_action_update_7013() {
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_profile');
+
+  _sba_message_action_create_zip_plus_four();
+
+  $nodes = db_query('select n.nid from {node} n
+    WHERE n.type = :type',
+    array(':type' => 'sba_message_action')
+  );
+
+  foreach ($nodes as $node) {
+    $nid = db_query('select nid from {webform_component}
+      WHERE nid = :nid AND form_key = :key',
+      array(':nid' => $node->nid, ':key' => 'sbp_zip_plus_four')
+    )->fetchField();
+    if (!$nid) {
+      $field = array(
+        'nid' => $node->nid,
+        'form_key' => 'sbp_zip_plus_four',
+        'pid' => 0,
+        'name' => t('Zip+4'),
+        'type' => 'hidden',
+        'value' => '',
+        'weight' => 13,
+        'email' => 1,
+      );
+      webform_component_insert($field);
+    }
+  }
+}
+
+/**
+ * Install zip+4 profile field and component if missing.
+ */
+function sba_message_action_update_7014() {
+  $webform_user_default_fields_sba_message_action = variable_get('webform_user_default_fields_sba_message_action', array());
+  $fields = array_merge($webform_user_default_fields_sba_message_action, array('sbp_zip_plus_four'));
+  variable_set('webform_user_default_fields_sba_message_action', array_unique($fields));
+}
+
+/**
+ * Install action optin if missing.
+ */
+function sba_message_action_update_7015() {
+
+  $nodes = db_query('select n.nid from {node} n
+    WHERE n.type = :type',
+    array(':type' => 'sba_message_action')
+  );
+
+  foreach ($nodes as $node) {
+    $nid = db_query('select nid from {webform_component}
+      WHERE nid = :nid AND form_key = :key',
+      array(':nid' => $node->nid, ':key' => 'sbp_sba_action_optin')
+    )->fetchField();
+
+    if (!$nid) {
+      $field = array(
+        'nid' => $node->nid,
+        'form_key' => 'sbp_sba_action_optin',
+        'name' => t('Action Opt In'),
+        'type' => 'select',
+        'mandatory' => 0,
+        'pid' => 0,
+        'weight' => 40,
+        'explanation' => '',
+        'options' => array(0, 1),
+        'category_key' => NULL,
+        'category_name' => NULL,
+        'extra' => array(
+          'title_display' => 'none',
+          'multiple' => 1,
+          'items' => 'sbp_sba_action_optin|Show my name in a list of action takers.'
+        ),
+      );
+      webform_component_insert($field);
+    }
+  }
+}
+
+/**
+ *  Add message action optin id table
+ */
+function sba_message_action_update_7016() {
+  $schema = module_invoke('sba_message_action', 'schema');
+  if(db_table_exists('springboard_action_opt_in') == FALSE) {
+    db_create_table('springboard_action_opt_in', $schema['springboard_action_opt_in']);
+  }
+}
+
+/**
+ *  Add message action optin id table
+ */
+function sba_message_action_update_7017() {
+  $schema = module_invoke('sba_message_action', 'schema');
+  if(db_table_exists('springboard_action_opt_in_block') == FALSE) {
+    db_create_table('springboard_action_opt_in_block', $schema['springboard_action_opt_in_block']);
+  }
+}
+
+function sba_message_action_update_7018() {
+  $schema = module_invoke('sba_message_action', 'schema');
+  if(db_table_exists('cache_deliverability_report') == FALSE) {
+    db_create_table('cache_deliverability_report', $schema['cache_deliverability_report']);
+  }
+}
+
+
+function sba_message_action_update_7019() {
+  $schema = module_invoke('sba_message_action', 'schema');
+  if(db_table_exists('cache_deliverability_target') == FALSE) {
+    db_create_table('cache_deliverability_target', $schema['cache_deliverability_target']);
+  }
+}
+
+/**
+ * Install deliverable_message_count if missing.
+ */
+function sba_message_action_update_7020() {
+
+  $nodes = db_query('select n.nid from {node} n
+    WHERE n.type = :type',
+    array(':type' => 'sba_message_action')
+  );
+
+  foreach ($nodes as $node) {
+    $cid = db_query('select cid from {webform_component}
+      WHERE nid = :nid AND form_key = :key',
+      array(':nid' => $node->nid, ':key' => 'sba_deliverable_count')
+    )->fetchField();
+
+    if ($cid) {
+      $field = array(
+        'cid' => $cid,
+        'nid' => $node->nid,
+        'form_key' => 'sba_deliverable_count',
+        'pid' => 0,
+        'name' => t('Messages Generated'),
+        'type' => 'hidden',
+        'value' => 0,
+        'weight' => 13,
+        'email' => 1,
+      );
+      webform_component_update($field);
+    }
+  }
+}

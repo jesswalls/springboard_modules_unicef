@@ -29,7 +29,7 @@ function fundraiser_sustainers_admin() {
           $row = array();
           $row[] = l($donation_set->master_did, 'admin/config/system/fundraiser/recurring/' . $donation_set->master_did . '/view');
           $row[] = $this_donation->user->name;
-          $row[] = '$' . money_format('%i', $next_charge->donation['amount']);
+          $row[] = $next_charge->donation['amount_formatted'];
           $row[] = date('m/d/y', $donation_set->next_charge);
           $row[] = $donation_set->status;
           $rows[] = $row;
@@ -83,7 +83,8 @@ function fundraiser_sustainers_admin_view($did) {
       else {
         $row[] = $this_donation->did;
       }
-      $row[] = '$' . money_format('%i', $this_donation->donation['amount']);
+
+      $row[] = $this_donation->donation['amount_formatted'];
       $row[] = date('m/d/y', $this_donation->recurring->next_charge);
       if (arg(4) == 'recurring' && arg(6) == 'view') {
         $row[] = $this_donation->recurring->sustainer_key;

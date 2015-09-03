@@ -1,0 +1,227 @@
+<?php
+/**
+ * @file
+ * Test coverage for petition quicksign.
+ */
+
+class SpringboardadvocacyQuicksignTestCase extends WebformUserTestSetup {
+  /**
+   * Implementation of getInfo().
+   */
+  public static function getInfo() {
+    return array(
+      'name' => t('Springboard Advocacy Quicksign'),
+      'description' => t('Test the submission functionality of springboard advocacy quicksign.'),
+      'group' => t('Springboard Advocacy'),
+    );
+  }
+
+  /**
+   * Implementation of setUp().
+   */
+  public function setUp($additional_modules = array()) {
+    $enable_modules = array(
+      'springboard_petition',
+      'sba_quicksign',
+    );
+
+    // Call the parent to set all of the base modules up.
+    parent::setUp($enable_modules);
+
+    $this->create_petition_content_type();
+    variable_set('petition_springboard_petition', 1);
+
+    // log a user in
+    $permissions = array(
+      'access content',
+      'administer nodes',
+      'create webform content',
+      'edit own webform content',
+      'access all webform results',
+      'create springboard_petition content',
+      'edit any springboard_petition content',
+      'edit own springboard_petition content',
+    );
+
+    $this->privileged_user = $this->drupalCreateUser($permissions);
+
+  }
+
+  public function testSpringboardadvocacyQuicksignCreatePetition() {
+    $account = $this->drupalLogin($this->privileged_user);
+    // confirm quicksign ui is present on node add form.
+    $this->drupalGet('node/add/springboard-petition');
+    $this->assertFieldById('edit-quicksign-enabled', NULL, $message = 'Enable Quicksign checkbox present on node add form.');
+    $this->assertFieldById('edit-quicksign-label', NULL, 'Quicksign form label field present on node add form.');
+    $this->assertFieldById('edit-quicksign-description-value', NULL, 'Form description field present on node add form.');
+    $this->assertFieldById('edit-quicksign-button-text', NULL, 'Button text field present on node add form.');
+
+    // create petition, enable quicksign on petition.
+    $this->node = $this->create_petition();
+    $this->assertTrue($this->node->type == 'springboard_petition', 'New springboard petition created, node id:' . $this->node->nid);
+    // confirm quicksign ui is present on node edit form.
+    $this->drupalGet('node/' . $this->node->nid . '/edit');
+    $this->assertFieldById('edit-quicksign-enabled', NULL, $message = 'Enable Quicksign checkbox present on node add form.');
+    $this->assertFieldById('edit-quicksign-label', NULL, 'Quicksign form label field present on node edit form.');
+    $this->assertFieldById('edit-quicksign-description-value', NULL, 'Form description field present on node edit form.');
+    $this->assertFieldById('edit-quicksign-button-text', 'Sign our petition!', 'Button text field present on node edit form.');
+
+    // View petition with quicksign enabled.
+    $this->drupalGet('node/' . $this->node->nid);
+    $this->assertFieldById('edit-quicksign-mail', $this->privileged_user->mail, 'Mail field present and populated from user account.');
+
+    // View petition with quicksign disabled.
+    db_query('UPDATE {sba_quicksign} SET quicksign_enabled = 0 WHERE nid = :nid', array(':nid' => $this->node->nid));
+    $this->drupalGet('node/' . $this->node->nid);
+    $this->assertNoFieldById('edit-quicksign-mail', 'Quicksign form is not present when disabled.');
+
+    db_query('UPDATE {sba_quicksign} SET quicksign_enabled = 1 WHERE nid = :nid', array(':nid' => $this->node->nid));
+    // Add a required fields for futher testing.
+    db_query('UPDATE {webform_component} SET mandatory = 1 WHERE form_key = :form_key', array(':form_key' => 'sbp_first_name'));
+    db_query('UPDATE {webform_component} SET mandatory = 1 WHERE form_key = :form_key', array(':form_key' => 'sbp_last_name'));
+
+    // submit form with existing account (partial profile)
+    $edit = array(
+      'sbp_first_name[und][0][value]' => 'Test',
+    );
+    $this->drupalPost('user/' . $this->privileged_user->uid . '/edit', $edit, 'Save');
+    $edit = array(
+      'quicksign_mail' => $this->privileged_user->mail
+    );
+    $this->drupalPost('node/' . $this->node->nid, $edit, 'Sign our petition!');
+    $this->assertUniqueText("Unfortunately, we don't have enough information to complete your signature via the short form. Please fill out the full form to sign this petition.", t('Submitting quicksign form with an email address associated with an account containing partial profile information produces the correct message & redirect.'));
+
+    // submit form with existing account (full profile)
+    // set values for required fields.
+    $edit = array(
+      'sbp_first_name[und][0][value]' => 'Test',
+      'sbp_last_name[und][0][value]' => 'User',
+    );
+    $this->drupalPost('user/' . $this->privileged_user->uid . '/edit', $edit, 'Save');
+
+    $edit = array(
+      'quicksign_mail' => $this->privileged_user->mail
+    );
+    $this->drupalPost('node/' . $this->node->nid , $edit, 'Sign our petition!');
+    $this->assertUniqueText('Thank you for saving the humans', t('Confirmation message displayed on successful quicksign submission.'));
+
+    $edit = array(
+      'quicksign_mail' => 'quicksign_test@example.com',
+    );
+    $this->drupalPost('node/' . $this->node->nid, $edit, 'Sign our petition!');
+    $this->assertUniqueText('No account with the email address quicksign_test@example.com was found. Please fill out the full form to sign the petition.', t('Submitting Quicksign form with a new email account results in the expected message & redirect.'));
+  }
+
+ /**
+   * Create an instance of a webform user enabled node to use for testing.
+   */
+  protected function create_petition() {
+    // Create the node.
+    $node = new stdClass();
+    $node->is_new = 1;
+    $node->type = 'springboard_petition';
+    $node->language = LANGUAGE_NONE;
+    $node->uid = 1;
+    $node->title = 'Save the Humans';
+    $node->field_fundraiser_internal_name = array($node->language => array(0 => array('value' => 'Save the Humans')));
+    $node->status = 1;
+    $node->promote = 1;
+    $node->body['LANGUAGE_NONE'][0]['value'] = 'Sign the petition to save the humans.';
+    $node->body['LANGUAGE_NONE'][0]['summary'] = 'Sign the petition to save the humans.';
+    $node->body['LANGUAGE_NONE'][0]['format'] = 'filtered_html';
+    $node->webform = array(
+      'confirmation' => 'Thank you for saving the humans, [current-user:sbp-first-name].',
+      'confirmation_format' => 'filtered_html',
+      'redirect_url' => '<confirmation>',
+      'teaser' => 0,
+      'block' => 0,
+      'allow_draft' => 0,
+      'auto_save' => 0,
+      'submit_notice' => 1,
+      'submit_limit' => -1,
+      'submit_interval' => -1,
+      'total_submit_limit' => -1,
+      'total_submit_interval' => -1,
+      'status' => 1,
+      'record_exists' => '',
+      'roles' => array(
+        '0' => 1,
+        '1' => 2,
+      ),
+      'emails' => array(),
+      'components' => array(),
+    );
+
+    $node->is_webform_user = 1;
+    $node->send_new_user_email = 0;
+    node_save($node);
+
+    db_query('
+      INSERT INTO {sba_quicksign} (
+        nid,
+        quicksign_enabled,
+        form_label,
+        form_description,
+        form_description_format,
+        submit_button_text
+      )
+      VALUES (:nid, 1, :label, :description, :format, :submit_text)',
+      array(':nid' => $node->nid, ':label' => 'Save the Humans Quickly', ':description' => 'Seriously, they need saving.', ':format' => 'filtered_html', ':submit_text' => 'Sign our petition!')
+   );
+    return $node;
+  }
+
+  public function create_petition_content_type($additional_settings = array()) {
+    $defaults = array(
+      'type' => 'springboard_petition',
+      'name' => 'Petition',
+      'description' => 'Springboard petition',
+      'title_label' => t('Title'),
+      'base' => 'node_content',
+      'custom' => TRUE,
+      'modified' => TRUE,
+    );
+
+    $settings = $additional_settings + $defaults;
+
+    $type = node_type_set_defaults();
+    $type->name = $settings['name'];
+    $type->type = $settings['type'];
+    $type->description = $settings['description'];
+    $type->title_label = $settings['title_label'];
+    $type->has_title = ($type->title_label != '');
+    $type->base = $settings['base'];
+    $type->custom = $settings['custom'];
+    $type->modified = $settings['modified'];
+
+    // Save or reset persistent variable values.
+    $variables = array(
+      'node_submitted' => 0,
+      'comment' => COMMENT_NODE_HIDDEN,
+      'webform_user' => 1,
+      'webform_user_default_fields' => array(
+        'webform_user_all_profile_fields' => 'webform_user_all_profile_fields',
+      ),
+    );
+    foreach ($variables as $key => $value) {
+      $variable_new = $key . '_' . $type->type;
+      if (is_array($value)) {
+        $value = array_keys(array_filter($value));
+      }
+      variable_set($variable_new, $value);
+    }
+    $this->drupalCreateContentType($settings = (array) $type);
+    $status = node_type_save($type);
+    node_types_rebuild();
+    node_add_body_field($type);
+
+    // Add as a webform.
+    $webform_node_types = variable_get('webform_node_types', array('webform'));
+    $webform_node_types_primary = variable_get('webform_node_types_primary', array('webform'));
+    $webform_node_types = array_merge($webform_node_types, array('petition'));
+    $webform_node_types_primary = array_merge($webform_node_types_primary, array('petition'));
+    variable_set('webform_node_types', array_unique($webform_node_types));
+    variable_set('webform_node_types_primary', array_unique($webform_node_types_primary));
+  }
+
+}

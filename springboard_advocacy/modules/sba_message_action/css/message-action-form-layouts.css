@@ -1,0 +1,298 @@
+.row-fluid,
+.row-fluid[class*="span"] {
+    min-height: 1px;
+}
+
+#call-to-action-call {
+    font-weight: bold;
+    margin-bottom: 1em;
+}
+
+#take-action-wrapper {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #d5d5d5;
+    padding: 0 20px 20px ;
+    margin-bottom: 40px;
+    border-radius: 4px;
+}
+
+#take-action-wrapper > legend{
+    border:none;
+    padding: 0 10px;
+    margin-bottom: 0;
+    width: auto;
+}
+
+#take-action-wrapper fieldset legend {
+    font-size: 18px;
+}
+
+#sba-messages-form label,
+#sba-messages-form .description {
+    font-weight: bold;
+}
+
+ #edit-actions {
+    clear:both;
+    background-color: #fff;
+    border-top: none;
+    padding: 0;
+    margin: 0;
+}
+
+ #edit-actions input {
+    width: 97.5%;
+    background: #247AAD;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    margin-left: 0;
+    font-size: 1.5em;
+    padding: 10px 0;
+    text-shadow: none;
+}
+
+ #edit-actions input:hover {
+    background: #1E72A3;
+}
+
+ #sba-messages-form {
+    clear: both;
+}
+
+ #webform-component-sbp-salutation.control-group {
+    width: 20.75%;
+    float: left;
+    clear:none;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+.user-form-vertical #webform-component-sbp-salutation.control-group {
+    width: 100%;
+    float: none;
+    clear:both;
+    margin-top: 0;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+ #webform-component-sbp-first-name.control-group,
+ #webform-component-sbp-last-name.control-group {
+    float: left;
+    clear:none;
+    width:39.5%;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    padding-left: 10px;
+}
+
+.user-form-vertical #webform-component-sbp-first-name.control-group,
+.user-form-vertical #webform-component-sbp-last-name.control-group {
+    float: none;
+    clear:both;
+    width: 100%;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    padding-left: 0;
+}
+
+
+ #webform-component-sbp-salutation.control-group select {
+    width: 98.5%;
+}
+
+ #webform-component-sbp-first-name.control-group input,
+ #webform-component-sbp-last-name.control-group input {
+    width:90%;
+}
+
+.user-form-vertical #webform-component-sbp-first-name.control-group input,
+.user-form-vertical #webform-component-sbp-last-name.control-group input {
+    width:95%;
+}
+
+ #webform-component-mail.control-group input {
+    width: 95%;
+}
+
+ #webform-component-sbp-address.control-group,
+ #webform-component-sbp-address-line-2.control-group {
+    float: left;
+    clear:none;
+    width:50%;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+.user-form-vertical #webform-component-sbp-address.control-group,
+.user-form-vertical #webform-component-sbp-address-line-2.control-group {
+    float: none;
+    clear:both;
+    width:100%;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+ #webform-component-sbp-address-line-2.control-group {
+    padding-left: 10px;
+}
+
+.user-form-vertical #webform-component-sbp-address-line-2.control-group {
+    padding-left: 0;
+}
+
+ #webform-component-sbp-address.control-group input,
+ #webform-component-sbp-address-line-2.control-group input {
+    width:90%;
+}
+
+.user-form-vertical #webform-component-sbp-address.control-group input,
+.user-form-vertical #webform-component-sbp-address-line-2.control-group input,
+ #webform-component-sbp-city.control-group input {
+    width: 95%;
+}
+
+ #webform-component-sbp-state.control-group,
+ #webform-component-sbp-zip.control-group {
+    float: left;
+    clear:none;
+    width:50%;
+}
+
+.user-form-vertical #webform-component-sbp-state.control-group,
+.user-form-vertical #webform-component-sbp-zip.control-group {
+    float: none;
+    clear:both;
+    width:100%;
+}
+
+ #webform-component-sbp-state.control-group select,
+ #webform-component-sbp-zip.control-group input {
+    width:90%;
+}
+
+.user-form-vertical #webform-component-sbp-state.control-group select {
+    width:98.5%;
+}
+
+.user-form-vertical #webform-component-sbp-zip.control-group input,
+ #webform-component-sbp-phone.control-group input {
+    width: 95%;
+}
+
+textarea[id*="edit-sba-messages-message"] {
+    width: 95%;
+    min-height: 200px;
+}
+
+#edit-actions {
+    clear: both;
+}
+
+.node-sba-message-action .field-name-field-message-action-img {
+    float:right;
+    width: 30%;
+    padding: 5px 5px 2em 10px;
+}
+
+.node-sba-message-action .field-name-field-message-action-img img,
+ #image img{
+    display: block;
+    margin: 0 auto 20px auto;
+}
+
+.node-sba-message-action .field-name-body {
+    padding-left: 20px;
+}
+
+fieldset[id*="edit-sba-messages-message"]  input[name*="subject"] {
+    width: 95%;
+}
+
+#quicksign-container, #participants-container {
+    float: left;
+}
+
+#quicksign-container input {
+    width: 50%;
+}
+
+#quicksign-container input[type="submit"] {
+    width: 52.5%;
+    background: #247AAD none repeat scroll 0% 0%;
+    border: medium none;
+    border-radius: 4px;
+    color: #FFF;
+    margin-left: 0px;
+    font-size: 1.5em;
+    padding: 10px 0px;
+    text-shadow: none;
+}
+
+#quicksign-container input[type="submit"]:hover {
+    background: #1E72A3;
+}
+
+.user-form-vertical-right #right,
+.action-message-left #right{
+    float: right;
+}
+
+.user-form-vertical-right #left,
+.action-message-left #left,
+.user-form-vertical-right #quicksign-container,
+.user-form-vertical-right #participants-container,
+.action-message-left #quicksign-container,
+.action-message-left #participants-container
+{
+    margin-left: 0;
+}
+
+.action-body-left #quicksign-container,
+.action-body-right #quicksign-container,
+.action-body-left #participants-container,
+.action-body-right #participants-container{
+    float:none;
+}
+
+.action-message-right #quicksign-container,
+.action-message-right #participants-container {
+    float:right;
+}
+
+
+@media (min-width: 768px) and (max-width: 979px) {
+
+    #webform-component-sbp-salutation.control-group {
+        width: 100%;
+        float: none;
+        clear:both;
+        margin-top: 0;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+    }
+
+
+    #webform-component-sbp-first-name.control-group,
+    #webform-component-sbp-last-name.control-group {
+        float: none;
+        clear:both;
+        width: 100%;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+        padding-left: 0;
+    }
+
+}

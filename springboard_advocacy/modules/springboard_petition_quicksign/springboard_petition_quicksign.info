@@ -1,8 +1,0 @@
-name = Springboard Petition Quick Sign
-description = Sign petitions with only an email address.
-core = 7.x
-package = Springboard Advocacy
-dependencies[] = webform_user
-dependencies[] = springboard_petition
-
-files[] = tests/springboard_petition_quicksign.test

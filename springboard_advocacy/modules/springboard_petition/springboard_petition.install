@@ -1,0 +1,347 @@
+<?php
+/**
+ * @file
+ * Sets up the petition module and content type.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function springboard_petition_install() {
+  variable_set('petition_springboard_petition', TRUE);
+  $webform_node_types = variable_get('webform_node_types', array());
+  $webform_node_types[] = 'springboard_petition';
+  variable_set('webform_node_types', $webform_node_types);
+  $webform_node_types_primary = variable_get('webform_node_types_primary', array());
+  $webform_node_types_primary[] = 'springboard_petition';
+  variable_set('webform_node_types_primary', $webform_node_types_primary);
+
+  springboard_petition_add_content_type();
+  springboard_petition_add_example_petition();
+}
+
+/**
+ * Creates the springboard_petition content type.
+ */
+function springboard_petition_add_content_type() {
+  $type = node_type_set_defaults();
+  $type->name = t('Petition');
+  $type->type = 'springboard_petition';
+  $type->description = '';
+  $type->title_label = t('Title');
+  $type->has_title = TRUE;
+  $type->base = 'node_content';
+  $type->custom = TRUE;
+  $type->modified = TRUE;
+  $type->module = 'springboard_petition';
+  // Save or reset persistent variable values.
+  $variables = array(
+    'additional_settings__active_tab' => 'edit-webform-user',
+    'field_bundle_settings_node_' => array(),
+    'menu_parent' => 'main-menu:0',
+    'menu_options' => array(
+      0 => 'main-menu',
+    ),
+    'node_submitted' => 0,
+    'node_preview' => 1,
+    'node_options' => array('status' => 'status'),
+    'fundraiser' => 0,
+    'webform_user' => 1,
+    'webform_user_default_fields' => array(
+      'mail' => 'mail',
+      'sbp_first_name' => 'sbp_first_name',
+      'sbp_last_name' => 'sbp_last_name',
+    ),
+  );
+  foreach ($variables as $key => $value) {
+    $variable_new = $key . '_' . $type->type;
+    if (is_array($value)) {
+      $value = array_keys(array_filter($value));
+    }
+    variable_set($variable_new, $value);
+  }
+  node_type_save($type);
+  node_types_rebuild();
+  node_add_body_field($type);
+  // Add as a webform.
+  $webform_node_types = variable_get('webform_node_types', array('webform'));
+  $webform_node_types_primary = variable_get('webform_node_types_primary', array('webform'));
+  $webform_node_types = array_merge($webform_node_types, array('springboard_petition'));
+  $webform_node_types_primary = array_merge($webform_node_types_primary, array('springboard_petition'));
+  variable_set('webform_node_types', array_unique($webform_node_types));
+  variable_set('webform_node_types_primary', array_unique($webform_node_types_primary));
+  // Done.
+  drupal_set_message(t('The content type Petition has been added.'));
+  watchdog('springboard_petition', 'Added content type Petition.');
+
+  // Add opt-in field to list of default fields enabled for this content type.
+  // This keeps Webform User happy and ensures our opt-in component gets created.
+  $default_fields = variable_get('webform_user_default_fields_springboard_petition', '');
+  $default_fields[] = 'sbp_rps_optin';
+  variable_set('webform_user_default_fields_springboard_petition', $default_fields);
+
+  // Weighting the module to ensure submission handlers run after Webform User.
+  // This ensures that the user id in webform_submissions has been updated by
+  // Webform User before we get to it.
+  db_query('UPDATE {system} SET weight = :weight WHERE name = :name', array(':weight' => 1000, ':name' => 'springboard_petition'));
+}
+
+/**
+ * Implements hook_schema().
+ */
+function springboard_petition_schema() {
+  // Opt in tracking table.
+  $schema['springboard_petition_opt_in'] = array(
+    'description' => 'Store primary donation information.',
+    'fields' => array(
+      'sid' => array(
+        'description' => 'Webform submission id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'nid' => array(
+        'description' => 'Petition node id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'uid' => array(
+        'description' => 'Signer user id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'opt_in' => array(
+        'description' => 'Track user opt-in to show their signature per petition.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'description' => 'Submission timestamp',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('sid'),
+  );
+  return $schema;
+}
+
+function springboard_petition_add_example_petition() {
+  $node = new stdClass();
+  $node->is_new = 1;
+  $node->type = 'springboard_petition';
+  $node->language = LANGUAGE_NONE;
+  $node->uid = 1;
+  $node->title = 'Example Petition Form';
+  $node->status = 1;
+  $node->promote = 0;
+  $node->body[LANGUAGE_NONE][0]['value'] = 'Donec placerat. Nullam nibh dolor, blandit sed, fermentum id, ' .
+    'imperdiet sit amet, neque. Nam mollis ultrices justo. Sed tempor. Sed vitae tellus. Etiam sem arcu, eleifend ' .
+    'sit amet, gravida eget, porta at, wisi. Nam non lacus vitae ipsum viverra pretium. Phasellus massa. Fusce ' .
+    'magna sem, gravida in, feugiat ac, molestie eget, wisi. Fusce consectetuer luctus ipsum. Vestibulum nunc. ' .
+    'Suspendisse dignissim adipiscing libero. Integer leo. Sed pharetra ligula a dui. Quisque ipsum nibh, ullamcorper ' .
+    'eget, pulvinar sed, posuere vitae, nulla. Sed varius nibh ut lacus. Curabitur fringilla. Nunc est ipsum, ' .
+    'pretium quis, dapibus sed, varius non, lectus. Proin a quam. Praesent lacinia, eros quis aliquam porttitor, ' .
+    'urna lacus volutpat urna, ut fermentum neque mi egestas dolor.';
+  $node->body[LANGUAGE_NONE][0]['summary'] = 'Donec placerat. Nullam nibh dolor, blandit sed, fermentum id, imperdiet ' .
+    'sit amet, neque. Nam mollis ultrices justo. Sed tempor. Sed vitae tellus. Etiam sem arcu, eleifend sit amet, ' .
+    'gravida eget, porta at, wisi. Nam non lacus vitae ipsum viverra pretium. Phasellus massa. Fusce magna sem, gravida ' .
+    'in, feugiat ac, molestie eget, wisi.';
+  $node->body[LANGUAGE_NONE][0]['format'] = 'filtered_html';
+  $node->webform = array(
+    'confirmation' => 'Thank you, %value[sbp_first_name] for signing the petition.',
+    'confirmation_format' => 'filtered_html',
+    'redirect_url' => '<confirmation>',
+    'teaser' => 0,
+    'block' => 0,
+    'allow_draft' => 0,
+    'auto_save' => 0,
+    'submit_notice' => 1,
+    'submit_text' => t('Sign'),
+    'submit_limit' => -1,
+    'submit_interval' => -1,
+    'total_submit_limit' => -1,
+    'total_submit_interval' => -1,
+    'status' => 1,
+    'record_exists' => '',
+    'roles' => array(
+      '0' => 1,
+      '1' => 2,
+    ),
+    'emails' => array(),
+    'components' => array(),
+  );
+  $email_nid =springboard_petition_email_wrapper_add();
+  if ($email_nid != NULL) {
+    $node->webform['emails'][1] = array(
+      'email' => '',
+      'template' => 'default',
+      'subject' => 'Thank you for signing our petition!',
+      'from_name' => 'Springboard',
+      'from_address' => 'example-from@example.com',
+      'html' => 0,
+      'attachments' => 0,
+      'excluded_components' => array(),
+    );
+  }
+  $node->is_webform_user = 1;
+  $node->send_new_user_email = 0;
+  node_save($node);
+  $node = node_load($node->nid);
+  // Save confirmation details.
+  $confirmation['nid'] = $node->nid;
+  $confirmation['confirmation_page_title'] = 'Thank you for signing our petition!';
+  _webform_confirmations_update($confirmation);
+  // Save email wrapper details.
+  foreach ($node->webform['components'] as $component) {
+    if ($component['form_key'] == 'mail') {
+      $cid = $component['cid'];
+      $node->webform['emails'][1]['email'] = $cid;
+    }
+  }
+  if ($email_nid != NULL) {
+    $settings = array(
+      'nid' => $node->nid,
+      'eid' => 1,
+      'tid' => $email_nid,
+      'bcc_email' => '',
+      'html_message' => 'Thank you for signing our petition!',
+      'html_message_format' => 'filtered_html',
+      'text_message' => 'Thank you for signing our petition!',
+      'extra' => serialize(array()),
+    );
+  }
+  // One last save.
+  node_save($node);
+  email_wrappers_save_settings($node->nid, 1, $settings);
+  drupal_set_message(t('An example petition form has been created.'));
+}
+
+function springboard_petition_email_wrapper_add() {
+  $node = new stdClass();
+  $node->is_new = 1;
+  $node->type = 'email_wrapper';
+  $node->language = LANGUAGE_NONE;
+  $node->uid = 1;
+  $node->title = 'Example Petition Email Wrapper';
+  $node->status = 0;
+  $node->promote = 0;
+  $node->email_wrapper_from_name[LANGUAGE_NONE][0] = array(
+    'value' => 'Springboard',
+    'format' => '',
+    'safe_value' => 'Springboard',
+  );
+  $node->email_wrapper_from_email[LANGUAGE_NONE][0] = array(
+    'value' => 'example-from@example.com',
+    'format' => '',
+    'safe_value' => 'example-from@example.com',
+  );
+  $node->email_wrapper_reply_email[LANGUAGE_NONE][0] = array(
+    'value' => 'example-to@example.com',
+    'format' => '',
+    'safe_value' => 'example-to@example.com',
+  );
+  $node->email_wrapper_subject[LANGUAGE_NONE][0] = array(
+    'value' => 'Thank you for signing our petition!',
+    'format' => '',
+    'safe_value' => 'Thank you for signing our petition!',
+  );
+  $node->email_wrapper_html_template[LANGUAGE_NONE][0] = array(
+    'value' => 'Thank you for signing our petition!' . "\n" .
+      "\n" .
+      '%html_message' . "\n" .
+      "\n" .
+      '-----' . "\n" .
+      'Springboard Example',
+    'summary' => '',
+    'format' => 'filtered_html',
+    'safe_value' => '<p>Thank you for your signing our petition!</p>' . "\n" .
+      '<p>%html_message</p>' . "\n" .
+      '<p>-----<br>' . "\n" .
+      'Springboard Example</p>',
+  );
+  $node->email_wrapper_html_message[LANGUAGE_NONE][0] = array(
+    'value' => 'Please visit us again soon.',
+    'summary' => '',
+    'format' => 'filtered_html',
+    'safe_value' => '<p>Please visit us again soon.</p>',
+  );
+  $node->email_wrapper_text_template[LANGUAGE_NONE][0] = array(
+    'value' => 'Thank you for signing our petition!' . "\n" .
+      "\n" .
+      '%text_message' . "\n" .
+      "\n" .
+      '-----' . "\n" .
+      'Springboard Example',
+    'format' => '',
+    'safe_value' => 'Thank you for signing our petition!' . "\n" .
+      "\n" .
+      '%text_message' . "\n" .
+      "\n" .
+      '-----' . "\n" .
+      'Springboard Example',
+  );
+  $node->email_wrapper_text_message[LANGUAGE_NONE][0] = array(
+    'value' => 'Please visit us again soon.',
+    'format' => 'filtered_html',
+    'safe_value' => '<p>Please visit us again soon.</p>',
+  );
+  node_save($node);
+  // Save extras.
+  drupal_set_message(t('An example petition email wrapper has been created.'));
+  return $node->nid;
+}
+
+/**
+ * Implements hook_update_N().
+ */
+
+/**
+ * Add sid column to opt in table, this lets us link opt ins to specific submissions.
+ */
+function springboard_petition_update_7001() {
+  $field = array(
+    'description' => 'Webform submission id.',
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'initial' => 0,
+  );
+  db_add_field('springboard_petition_opt_in', 'sid', $field);
+}
+
+/**
+ * Add "created" column to opt in table. Prevents joining on webform submissions
+ * table when displaying recent petition signers.
+ */
+function springboard_petition_update_7002() {
+  $field = array(
+    'description' => 'Submission timestamp',
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 0,
+  );
+  db_add_field('springboard_petition_opt_in', 'created', $field);
+  db_drop_primary_key('springboard_petition_opt_in');
+  db_add_primary_key('springboard_petition_opt_in', array('sid'));
+  db_query('UPDATE {springboard_petition_opt_in} s SET created = (SELECT submitted FROM {webform_submissions} w WHERE w.sid = s.sid)');
+}
+
+/**
+ * Enable sba_quicksign if springboard petition db table exists
+ */
+function springboard_petition_update_7003() {
+  if(db_table_exists('springboard_quicksign')) {
+      module_enable(array('sba_quicksign'));
+  }
+}

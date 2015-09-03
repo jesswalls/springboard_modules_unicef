@@ -58,8 +58,8 @@ function fundraiser_commerce_menu_alter(&$items) {
   // Custom refund form for fundraiser
   $items['admin/commerce/orders/%commerce_order/payment/%commerce_payment_transaction/refund'] = array(
     'title' => 'Refund',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('fundraiser_commerce_refund_form', 3, 5),
+    'page callback' => 'fundraiser_commerce_refund_form',
+    'page arguments' => array(3, 5),
     'access callback' => 'fundraiser_commerce_refund_form_access',
     'access arguments' => array(3, 5),
     'type' => MENU_DEFAULT_LOCAL_TASK,
@@ -95,7 +95,7 @@ function fundraiser_commerce_refund_form_access($order, $transaction) {
  * Form callback, override Commerce provided refund forms with our own.
  * This is just a wrapper, to get the rest of the goodies in place.
  */
-function fundraiser_commerce_refund_form($form, &$form_state, $order, $transaction) {
+function fundraiser_commerce_refund_form($order, $transaction) {
   return drupal_get_form('_fundraiser_refund_form', $order->order_id);
 }
 
@@ -231,7 +231,9 @@ function commerce_donation_line_item_title($line_item) {
 
 /**
  * Implements hook_LINE_ITEM_BASE_add_form().
- * Returns the elements necessary to add a product line item through a line item manager widget.
+ *
+ * Returns the elements necessary to add a product line item through a
+ * line item manager widget.
  */
 function commerce_donation_line_item_add_form($element, &$form_state) {
   $form = array();
@@ -242,28 +244,36 @@ function commerce_donation_line_item_add_form($element, &$form_state) {
     '#size' => 60,
     '#maxlength' => 255,
   );
-  if (function_exists('fundraiser_multi_currency_get_currencies')) {
-    $multi_currancy = fundraiser_multi_currency_get_currencies();
-    $available_currancy = array();
-    foreach ($multi_currancy as $currancy) {
-      $available_currancy[$currancy->code] = $currancy->name;
-    }
-    $form['currency'] = array(
-      '#type' => 'select',
-      '#title' => t('Currency'),
-      '#description' => t('Enter the currency of the donation to add to the order.'),
-      '#options' => $available_currancy,
-    );
+
+  // Add a currency element.
+  $multi_currancy = commerce_currencies(TRUE, TRUE);
+  $available_currency = array();
+  foreach ($multi_currancy as $currency_code => $currency) {
+    $available_currency[$currency_code] = $currency['name'];
   }
+
+  // This default value isn't great but it's what we have at this point.
+  // Ideally it should be the currency of the other
+  // line items or original donation.
+  $form['currency'] = array(
+    '#type' => 'select',
+    '#title' => t('Currency'),
+    '#description' => t('Enter the currency of the donation to add to the order.'),
+    '#options' => $available_currency,
+    '#default_value' => commerce_default_currency(),
+  );
+
   // TODO - select a fundraiser to associate this with.
-  // AND add support when a donation is submitted via this order form, to update a donation obj and submission with the given amount.
+  // AND add support when a donation is submitted via this order form,
+  // to update a donation obj and submission with the given amount.
   // All this for later.
   // For now, display a 'not from here' message.
   $form['fundraiser_donation'] = array(
     '#markup' => '<div class="commerce-donation-line-item-warning">' .
-      t('Warning: Donation line items added through this interface do not generate an additional donation object in the Fundraiser system,' .
-        'or update a donation associated with this order to the new amount. Please do not use this to update donations on orders.') . '</div>',
+      t('Warning: Donation line items added through this interface do not generate an additional donation object in the Fundraiser system, or update a donation associated with this order to the new amount. Please do not use this to update donations on orders.') .
+      '</div>',
   );
+
   return $form;
 }
 
@@ -273,7 +283,7 @@ function commerce_donation_line_item_add_form($element, &$form_state) {
 function commerce_donation_line_item_add_form_submit(&$line_item, $element, &$form_state, $form) {
   $values = $element['actions'];
   if (!empty($values['amount']['#value']) && is_numeric($values['amount']['#value'])) {
-    $values['currency']['#value'] = isset($values['currency']['#value']) ? $values['currency']['#value'] : 'USD';
+    $values['currency']['#value'] = isset($values['currency']['#value']) ? $values['currency']['#value'] : commerce_default_currency();
     // Create a line item for this order. Contains order amount info.
     $line_item->line_item_label = t('Donation');
     $line_item->quantity = 1;
@@ -318,6 +328,11 @@ function fundraiser_commerce_commerce_order_status_info() {
       'title' => 'Failed refund',
       'state' => 'canceled',
     ),
+    'void' => array(
+      'name' => 'void',
+      'title' => 'Void',
+      'state' => 'canceled',
+    ),
     'skipped' => array(
       'name' => 'skipped',
       'title' => 'Skipped',
@@ -337,6 +352,11 @@ function fundraiser_commerce_commerce_order_status_info() {
       'name' => 'partially_refunded',
       'title' => 'Partially Refunded',
       'state' => 'completed',
+    ),
+    'auto_canceled' => array(
+      'name' => 'auto_canceled',
+      'title' => 'Auto canceled',
+      'state' => 'canceled',
     ),
   );
   return $fundraiser_statuses;
@@ -367,10 +387,12 @@ function _fundraiser_commerce_commerce_order_statuses_used() {
     'failed',
     'canceled',
     'pending_future_payment',
+    'auto_canceled',
     'refunded',
     'partially_refunded',
     'payment_received',
     'skipped',
+    'void',
   );
 }
 
@@ -764,7 +786,12 @@ function _fundraiser_commerce_client_state_ajax_submit($form, $form_state, &$mes
     '#type' => 'ajax',
     '#commands' => array(
       ajax_command_replace('#zone-select-wrapper', render($build_array)),
-      ajax_command_invoke('#edit-submitted-billing-information-state', 'focus'),
+      // Focus on the state field and remove the current value.
+      ajax_command_invoke(':input[name="' . $build_array['#name'] . '"]', 'focus'),
+      ajax_command_invoke(':input[name="' . $build_array['#name'] . '"]', 'val', array('')),
+
+      // Force the zip code field to re-validate.
+      ajax_command_invoke(':input[name*="[zip]"]', 'trigger', array('keyup')),
     ),
   );
 }
@@ -797,7 +824,10 @@ function _fundraiser_commerce_zone_field_display($form, $form_state, $field) {
     // Provide a default based on the form values.
     $country_field = fundraiser_get_form_field($form['#calling_module'], $form, 'country');
     // Filter options down to just the zones available for this country.
-    if (isset($country_field['#default_value'])) {
+    if (!empty($country_id)) {
+      $default = $country_id;
+    }
+    elseif (isset($country_field['#default_value'])) {
       $default = $country_field['#default_value'];
     }
     elseif(isset($country_field['#webform_component']['value'])) {
@@ -848,10 +878,23 @@ function fundraiser_commerce_fundraiser_donation_get_donation($donation) {
 
   // Data from order.
   $donation->donation['mail'] = isset($order->mail) ? $order->mail : '';
+
+  $order_total = $order_wrapper->commerce_order_total->value();
+
   // Reverse the work done by commerce_currency_decimal_to_amount($donation->donation['amount'], $donation->donation['currency'])
   // So we have the correct decimaled value.
-  $donation->donation['amount'] = commerce_currency_amount_to_decimal($order->commerce_order_total[LANGUAGE_NONE][0]['amount'],
-    $order->commerce_order_total[LANGUAGE_NONE][0]['currency_code']);
+  // Note that commerce_currency_amount_to_decimal() does not pad the decimal
+  // places, but commerce_currency_format() does. (ie. 10.5 vs $10.50).
+  // Also note that this number_format does not include a comma.
+  // The number_format won't play nicely with other currencies that use
+  // difference separators.
+  // This should later be fixed to not use the numbeer_format, and for display
+  // tokens use amount_formatted for display and amount for math and backend
+  // things.
+  $donation->donation['amount'] = number_format(commerce_currency_amount_to_decimal($order_total['amount'], $order_total['currency_code']), 2, '.', '');
+  $donation->donation['currency'] = commerce_currency_load($order_total['currency_code']);
+  $donation->donation['amount_formatted'] = commerce_currency_format($order_total['amount'], $order_total['currency_code']);
+
   $donation->donation['quantity'] = 1;
   $donation->donation['hostname'] = $order->hostname;
 
@@ -860,10 +903,11 @@ function fundraiser_commerce_fundraiser_donation_get_donation($donation) {
     if ($line_item_wrapper->type->value() == 'donation' && $line_item_wrapper->quantity->value() > 1) {
       // Reset the donation amount and quantity from this line item
       $donation->donation['quantity'] = $line_item_wrapper->quantity->value();
-      $donation->donation['amount'] = commerce_currency_amount_to_decimal(
+      $donation->donation['amount'] = number_format(commerce_currency_amount_to_decimal(
         $line_item_wrapper->commerce_unit_price->amount->value() * $line_item_wrapper->quantity->value(),
         $line_item_wrapper->commerce_unit_price->currency_code->value()
-      );
+      ), 2, '.', '');
+      $donation->donation['currency'] = commerce_currency_load($line_item_wrapper->commerce_unit_price->currency_code->value());
     }
   }
 
@@ -955,9 +999,24 @@ function fundraiser_commerce_fundraiser_donation_create($donation) {
   $node = $donation->node;
   // Pick out the values we need to generate an order.
   if ($donation->donation['amount'] == 'other') {
-    $donation->donation['amount'] = preg_replace('/[^\d\.]/i', '', $donation->donation['other_amount']);
+    $donation->donation['amount'] = _fundraiser_amount_value_sanitize($donation->donation['other_amount']);
   }
-  $donation->donation['currency'] = isset($donation->donation['currency']) ? $donation->donation['currency'] : 'USD';
+
+  // If not set, set the donation amount on the main donation object.
+  $donation->amount = isset($donation->amount) ? $donation->amount : _fundraiser_amount_value_sanitize($donation->donation['amount']);
+
+  // Set or convert the $donation->donation currency value to an array of currency values.
+  if (!isset($donation->donation['currency'])) {
+    $currency_code = !empty($donation->currency) ? $donation->currency : commerce_default_currency();
+    $donation->donation['currency'] = commerce_currency_load($currency_code);
+  }
+  elseif (is_string($donation->donation['currency']))  {
+    $donation->donation['currency'] = commerce_currency_load($donation->donation['currency']);
+  }
+
+  // Set the currency code on the root donation object.
+  $donation->currency = $donation->donation['currency']['code'];
+
   // Determine quantity and data from donation values.
   $quantity = isset($donation->donation['quantity']) && !empty($donation->donation['quantity']) ? $donation->donation['quantity'] : 1;
 
@@ -991,8 +1050,8 @@ function fundraiser_commerce_fundraiser_donation_create($donation) {
     $line_item = commerce_line_item_new('donation', $order->order_id);
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
     $line_item_wrapper->quantity = $quantity;
-    $line_item_wrapper->commerce_unit_price->amount = commerce_currency_decimal_to_amount($donation->donation['amount'], $donation->donation['currency']);
-    $line_item_wrapper->commerce_unit_price->currency_code = $donation->donation['currency'];
+    $line_item_wrapper->commerce_unit_price->amount = commerce_currency_decimal_to_amount($donation->amount, $donation->donation['currency']['code']);
+    $line_item_wrapper->commerce_unit_price->currency_code = $donation->donation['currency']['code'];
 
     $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add(
       $line_item_wrapper->commerce_unit_price->value(),
@@ -1022,7 +1081,9 @@ function fundraiser_commerce_fundraiser_donation_create($donation) {
     $profile = commerce_customer_profile_new('billing', $user->uid); // Billing type comes with Commerce by default.
   }
   // Update profile with the billing information.
-  $profile->commerce_customer_address[LANGUAGE_NONE][0] = addressfield_default_values();
+  $field = field_info_field('commerce_customer_address');
+  $instance =field_info_instance('commerce_customer_profile', 'commerce_customer_address', 'billing');
+  $profile->commerce_customer_address[LANGUAGE_NONE][0] = addressfield_default_values($field, $instance);
   $profile->commerce_customer_address[LANGUAGE_NONE][0]['country'] = $donation->donation['country'];
   $profile->commerce_customer_address[LANGUAGE_NONE][0]['name_line'] = $donation->donation['first_name'] . ' ' . $donation->donation['last_name'];
   $profile->commerce_customer_address[LANGUAGE_NONE][0]['first_name'] = $donation->donation['first_name'];
@@ -1044,7 +1105,7 @@ function fundraiser_commerce_fundraiser_donation_create($donation) {
     $method_instance = _fundraiser_gateway_info($info['id']);
   }
 
-  $scrubbed_fields = $donation->donation['payment_fields'];
+  $scrubbed_fields = isset($donation->donation['payment_fields']) ? $donation->donation['payment_fields'] : array();
   if (isset($method_instance['scrub callback']) && function_exists($method_instance['scrub callback'])) {
     $callback = $method_instance['scrub callback'];
     $scrubbed_fields = $callback($scrubbed_fields, $donation->donation['payment_method']);
@@ -1582,7 +1643,7 @@ function fundraiser_commerce_fundraiser_donation_update($donation) {
   if ($donation->donation['amount'] == 'other') {
     $donation->donation['amount'] = preg_replace('/[^\d\.]/i', '', $donation->donation['other_amount']);
   }
-  $donation->donation['currency'] = isset($donation->donation['currency']) ? $donation->donation['currency'] : 'USD';
+  $donation->donation['currency'] = isset($donation->donation['currency']) ? $donation->donation['currency'] : commerce_default_currency();
   // Determine quantity and data from donation values.
   $quantity = isset($donation->donation['quantity']) && !empty($donation->donation['quantity']) ? $donation->donation['quantity'] : 1;
 
@@ -1598,9 +1659,9 @@ function fundraiser_commerce_fundraiser_donation_update($donation) {
         $line_item_wrapper->quantity = $quantity;
         $line_item_wrapper->commerce_unit_price->amount = commerce_currency_decimal_to_amount(
           $donation->donation['amount'],
-          $donation->donation['currency']
+          $donation->donation['currency']['code']
         );
-        $line_item_wrapper->commerce_unit_price->currency_code = $donation->donation['currency'];
+        $line_item_wrapper->commerce_unit_price->currency_code = $donation->donation['currency']['code'];
 
         // Recalculate the price
         commerce_line_item_rebase_unit_price($line_item_wrapper->value());
@@ -1626,7 +1687,9 @@ function fundraiser_commerce_fundraiser_donation_update($donation) {
       $profile = commerce_customer_profile_new('billing', $user->uid); // Billing type comes with Commerce by default.
     }
     // Update profile with the billing information.
-    $profile->commerce_customer_address[LANGUAGE_NONE][0] = addressfield_default_values();
+    $field = field_info_field('commerce_customer_address');
+    $instance = field_info_instance('commerce_customer_profile', 'commerce_customer_address', 'billing');
+    $profile->commerce_customer_address[LANGUAGE_NONE][0] = addressfield_default_values($field, $instance);
     $profile->commerce_customer_address[LANGUAGE_NONE][0]['country'] = $donation->donation['country'];
     $profile->commerce_customer_address[LANGUAGE_NONE][0]['name_line'] = $donation->donation['first_name'] . ' ' . $donation->donation['last_name'];
     $profile->commerce_customer_address[LANGUAGE_NONE][0]['first_name'] = $donation->donation['first_name'];
@@ -1666,7 +1729,7 @@ function fundraiser_commerce_fundraiser_donation_update($donation) {
     }
 
     // Allow the gateways to scrub the data before saving
-    $scrubbed_fields = $donation->donation['payment_fields'];
+    $scrubbed_fields = isset($donation->donation['payment_fields']) ? $donation->donation['payment_fields'] : array();
     if (isset($donation->gateway['scrub callback']) && function_exists($donation->gateway['scrub callback'])) {
       $scrubbed_fields = $donation->gateway['scrub callback']($scrubbed_fields, $donation->donation['payment_method']);
     }

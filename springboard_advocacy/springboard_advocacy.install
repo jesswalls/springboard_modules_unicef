@@ -1,0 +1,124 @@
+<?php
+/**
+ * @file
+ * Springboard Advocacy installation functions.
+ */
+
+/**
+ * Implements hook_requirements().
+ *
+ * Make sure the Advocacy API php-sdk exists
+ *
+ * @param $phase
+ * @return mixed
+ */
+function springboard_advocacy_requirements($phase) {
+  $t = get_t();
+
+  $requirements['springboard_advocacy'] = array(
+    'title' => $t('Springboard advocacy'),
+    'value' => 'Version 1',
+  );
+
+  drupal_load('module', 'libraries');
+  $lib = libraries_detect('springboard_advocacy');
+
+  if ($phase == 'runtime' && !empty($lib['installed'])) {
+    $requirements['springboard_advocacy']['severity'] = REQUIREMENT_OK;
+  } 
+  elseif($phase == 'runtime') {
+    $requirements['springboard_advocacy']['severity'] = REQUIREMENT_ERROR;
+    $requirements['springboard_advocacy']['description'] = 'Springboard Advocacy library not installed';
+  }
+
+  return $requirements;
+}
+
+
+/**
+ * Implements hook_schema().
+ *
+ * Table to save unique action IDs
+ */
+function springboard_advocacy_schema() {
+
+  // Store a unique ID for use with advocacy server
+  $schema['sba_form_id'] = array(
+    'description' => 'Store messaging information.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'messages node id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'advocacy_id' => array(
+        'description' => 'form unique ID',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'precedence' => array(
+        'description' => 'Use precedence for messages attached to this form',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+    return $schema;
+}
+
+ /**
+  *  Add springboard_advocacy action id table
+  */
+function springboard_advocacy_update_7001() {
+  $schema = module_invoke('springboard_advocacy', 'schema');
+  if(db_table_exists('sba_form_id') == FALSE) {
+    db_create_table('sba_form_id', $schema['sba_form_id']);
+  }
+}
+
+/**
+ * rename alert table to actions.
+ */
+function springboard_advocacy_update_7004() {
+  if(db_table_exists('springboard_advocacy_alert_id') != FALSE && db_table_exists('sba_form_id') == FALSE) {
+    db_rename_table('springboard_advocacy_alert_id', 'sba_form_id');
+  }
+  else if(db_table_exists('springboard_advocacy_alert_id') && db_table_exists('sba_form_id')){
+    db_drop_table('springboard_advocacy_alert_id');
+  }
+}
+
+/**
+ * Add precedence field the sba_form_id table
+ */
+function springboard_advocacy_update_7005() {
+  $schema = module_invoke('springboard_advocacy', 'schema');
+  if(db_field_exists('sba_form_id', 'precedence') == FALSE) {
+    db_add_field('sba_form_id', 'precedence', $schema['sba_form_id']['fields']['precedence']);
+  }
+}
+
+/**
+ * rename alert var to action
+ */
+function springboard_advocacy_update_7006() {
+  $types = array('springboard_petition', 'sba_message_action');
+  variable_set('springboard_advocacy_goal_types', $types);
+}
+
+/**
+ * Delete the legislative issues vocab if actions is not enabled.
+ */
+function springboard_advocacy_update_7007() {
+  if (module_exists('taxonomy') && !module_exists('sba_message_action')) {
+    foreach (taxonomy_get_vocabularies() as $vocab) {
+      if ($vocab->machine_name == 'sba_legislative_issues') {
+        taxonomy_vocabulary_delete($vocab->vid);
+      }
+    }
+  }
+}

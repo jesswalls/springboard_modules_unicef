@@ -10,6 +10,7 @@
  */
 function webform_user_uninstall() {
   variable_del('webform_user_node_types');
+  variable_del('webform_user_session_store');
 }
 
 /**

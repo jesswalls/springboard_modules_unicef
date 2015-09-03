@@ -1,0 +1,132 @@
+<?php
+
+/**
+ * Implements hook_install().
+ */
+function springboard_taxonomy_install() {
+  _springboard_taxonomy_install_vocab_organization_issues();
+  _springboard_taxonomy_install_taxonomy_fields();
+}
+
+
+/**
+ * Install org issues vocabulary.
+ */
+function _springboard_taxonomy_install_vocab_organization_issues() {
+  $already_exists = FALSE;
+  foreach (taxonomy_get_vocabularies() as $vocab) {
+    if ($vocab->machine_name == 'sba_organization_issues') {
+      $already_exists = TRUE;
+      break;
+    }
+  }
+  if (!$already_exists) {
+    $t = get_t();
+    taxonomy_vocabulary_save((object) array(
+      'name' => t("Organization Issues"),
+      'machine_name' => 'sba_organization_issues',
+      'description' => $t("Your organization's issues, which can be used to auto-generate feeds and lists of related actions for your action center and other areas."),
+    ));
+  }
+}
+
+/**
+ * Create base taxonomy fields.
+ */
+function _springboard_taxonomy_install_taxonomy_fields() {
+  module_load_include('inc', 'field', 'field.crud');
+  module_load_include('inc', 'field', 'field.info');
+
+  foreach (_springboard_taxonomy_field_base() as $field_name => $field) {
+    // If the field doesn't exist create it.
+    if (!field_info_field('field_' . $field_name)) {
+      field_create_field($field['field_config']);
+    }
+  }
+}
+
+/**
+ * @return mixed
+ */
+function _springboard_taxonomy_field_base() {
+  $t = get_t();
+
+  // Organization issues.
+  $fields['sba_organization_issues'] = array(
+    'field_config' => array(
+      'field_name' => 'field_sba_organization_issues',
+      'type' => 'taxonomy_term_reference',
+      'translatable' => '0',
+      'cardinality' => '-1',
+      'foreign keys' => array(
+        'tid' => array(
+          'columns' => array(
+            'tid' => 'tid',
+          ),
+          'table' => 'taxonomy_term_data',
+        ),
+      ),
+      'indexes' => array(
+        'tid' => array(
+          0 => 'tid',
+        ),
+      ),
+      'locked' => '0',
+      'module' => 'taxonomy',
+      'settings' => array(
+        'allowed_values' => array(
+          0 => array(
+            'vocabulary' => 'sba_organization_issues',
+            'parent' => '0',
+          ),
+        ),
+      ),
+    ),
+  );
+
+  return $fields;
+}
+
+/**
+ * @return mixed
+ */
+function _springboard_taxonomy_field_instance($type) {
+  $t = get_t();
+
+  // Organization issues.
+  $fields['sba_organization_issues'] = array(
+    'field_instance' => array(
+      'field_name' => 'field_sba_organization_issues',
+      'entity_type' => 'node',
+      'bundle' => $type,
+      'label' => $t("Organization Issues"),
+      'default_value' => NULL,
+      'description' => '',
+      'display' => array(
+        'default' => array(
+          'label' => 'above',
+          'settings' => array(),
+          'type' => 'hidden',
+          'weight' => '3',
+        ),
+        'teaser' => array(
+          'label' => 'above',
+          'settings' => array(),
+          'type' => 'hidden',
+          'weight' => 0,
+        ),
+      ),
+      'required' => FALSE,
+      'widget' => array(
+        'active' => 1,
+        'module' => 'options',
+        'settings' => array(),
+        'type' => 'options_buttons',
+        'weight' => 4,
+      ),
+
+    ),
+  );
+  return $fields;
+}
+

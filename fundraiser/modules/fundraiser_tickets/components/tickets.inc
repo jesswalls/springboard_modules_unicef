@@ -151,7 +151,7 @@ function _fundraiser_tickets_validate_webform_field($element, &$form_state) {
     }
     unset($ticket_values['fundraiser-tickets-extra-donation']);
   }
-  
+
   // Grab the selected values and verify we have at least one
   $selected = array_filter($ticket_values);
   if (empty($selected)) {
@@ -181,6 +181,14 @@ function theme_fundraiser_tickets_webform_table($variables) {
 
   $element = $variables['element'];
 
+  $node = node_load($element['#webform_component']['nid']);
+  $node_currency = fundraiser_get_currency_from_node($node);
+
+  // Ideally here we would use the currency code and commerce_currency_format(),
+  // but we don't have the equivalent in the JS so instead we use dumbed down
+  // currency formatting here to stay consistent with what the JS does.
+  $node_currency_symbol = $node_currency['symbol'];
+
   $rows = array();
   $last_row = array();
   $ticket_prices = array();
@@ -188,36 +196,70 @@ function theme_fundraiser_tickets_webform_table($variables) {
   // Loop through the element and output the children fields as rows
   foreach (element_children($element) as $id) {
     if ($id == 'fundraiser-tickets-extra-donation'){
-      $last_row = array('data' => array(t('Additional Donation'), '', drupal_render($element[$id]), '',array('data' => '$ 0.00', 'id' => 'fundraiser-tickets-extra-donation-display', 'align' => 'right')));
+
+      try {
+        $node_wrapper = entity_metadata_wrapper('node', $node);
+        $addon_node = $node_wrapper->fr_tickets_donation_addon_form->value();
+        $addon_currency = fundraiser_get_currency_from_node($addon_node);
+        $addon_currency_symbol = $addon_currency['symbol'];
+      }
+      catch (Exception $e) {
+        $addon_currency_symbol = $node_currency_symbol;
+      }
+
+      $last_row = array(
+        'data' => array(
+          t('Additional Donation'),
+          '',
+          drupal_render($element[$id]),
+          '',
+          array(
+            'data' => $addon_currency_symbol . ' ' . '0.00',
+            'id' => 'fundraiser-tickets-extra-donation-display',
+            'align' => 'right',
+            ),
+          ),
+        );
     } elseif (isset($element[$id]['#extra']['product_id'])){
       $product_wrapper = entity_metadata_wrapper('commerce_product', commerce_product_load($element[$id]['#extra']['product_id']));
       $tickets_available = $product_wrapper->fr_tickets_quantity->value() - $product_wrapper->fr_tickets_quantity_sold->value();
-      $row  = array();
+
+      $ticket_amount = $product_wrapper->commerce_price->amount->value();
+      $ticket_currency_code = $product_wrapper->commerce_price->currency_code->value();
+      $ticket_currency = commerce_currency_load($ticket_currency_code);
+      $ticket_currency_symbol = $ticket_currency['symbol'];
+
+      $formatted_amount = commerce_currency_format($ticket_amount, $ticket_currency_code);
+      $row = array();
       $title = array(
-        'data' => check_plain($product_wrapper->title->value()) . ' (' . commerce_currency_format($product_wrapper->commerce_price->amount->value(), $product_wrapper->commerce_price->currency_code->value(), $product_wrapper) . ')',
-        'class' => 'ticket_type'
+        'data' => check_plain($product_wrapper->title->value()) . ' (' . $formatted_amount . ')',
+        'class' => 'ticket_type',
       );
-      $ticket_prices[$product_wrapper->product_id->value()] = $product_wrapper->commerce_price->amount->value() / 100;
+
+      $ticket_prices[$product_wrapper->product_id->value()] = array(
+        'amount' => number_format(commerce_currency_amount_to_decimal($ticket_amount, $ticket_currency_code), 2),
+        'currency' => $ticket_currency,
+      );
       $description = array(
         'data' => $tickets_available ? check_plain($product_wrapper->fr_tickets_description->value()) : check_plain($product_wrapper->fr_tickets_sold_out_message->value()),
-        'class' => 'ticket_description'
+        'class' => 'ticket_description',
       );
       $warning_message = array(
         'data' => $tickets_available > 0 && $tickets_available <= $product_wrapper->fr_tickets_threshold->value() ? theme('fundraiser_tickets_warning_indicator', array('warning_message' =>t("Only @tickets remaining!", array('@tickets' => format_plural($tickets_available, '1 ticket', '@count tickets'))))) : NULL,
-        'class' => 'ticket_warning'
+        'class' => 'ticket_warning',
       );
       // Add a div to contain the ticket total
       $ticket_total = array(
-        'data' => '$ 0.00',
+        'data' => $ticket_currency_symbol . ' ' . '0.00',
         'class' => 'fundraiser-ticket-type-total',
         'id' => 'product-' . $element[$id]['#extra']['product_id'] . '-tickets-total',
-        'align' => 'right'
+        'align' => 'right',
       );
       $row['data'] = array($title, $description, array('data'=> drupal_render($element[$id]), 'align' => 'right'), $warning_message, $ticket_total);
       $rows[] = $row;
     }
   }
-  
+
   $rows[] = $last_row;
 
   // Add a row to contain our totals
@@ -227,7 +269,7 @@ function theme_fundraiser_tickets_webform_table($variables) {
       array('data' => '', 'class' => 'ticket_description'),
       array('data' => 0, 'id' => 'fundraiser-tickets-total-quant', 'class' => 'quantity', 'align' => 'right'),
       array('data' => '', 'class' => 'ticket_warning'),
-      array('data' => '$ 0.00', 'id' => 'fundraiser-tickets-total-cost', 'class' => 'fundraiser-ticket-type-total', 'align' => 'right')
+      array('data' => $node_currency_symbol . ' ' . '0.00', 'id' => 'fundraiser-tickets-total-cost', 'class' => 'fundraiser-ticket-type-total', 'align' => 'right')
     )
   );
   $header = array(
@@ -238,7 +280,7 @@ function theme_fundraiser_tickets_webform_table($variables) {
     array('data' => t('Amount'), 'class' => 'fundraiser-ticket-type-total', 'align' => 'right')
   );
   // $attributes = array('class' => $element['#attributes']['class'], 'id' => $id, 'width' => '100%');
-  
+
   // Add the JS for the settings too
   drupal_add_js(array('fundraiserTickets' => array('ticketPrices' => $ticket_prices)), 'setting');
 

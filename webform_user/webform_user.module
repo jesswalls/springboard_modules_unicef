@@ -26,6 +26,10 @@ function webform_user_permission() {
       'title' => t('Configure webform emails'),
       'description' => t('Add, edit, and delete webform email settings.'),
     ),
+    'administer webform user settings' => array(
+      'title' => t('Administer webform user settings'),
+      'description' => t('Configure the Webform User module.')
+    ),
   );
 }
 
@@ -41,9 +45,62 @@ function webform_user_menu() {
     'access arguments' => array(1),
     'type' => MENU_LOCAL_TASK,
   );
+  $items['admin/config/content/webform_user'] = array(
+    'title' => 'Webform User',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('webform_user_admin_settings_form'),
+    'access arguments' => array('administer webform user settings'),
+    'file' => 'webform_user.admin.inc',
+  );
   // For webform user settings page.
   // 'access arguments' => array('Map webform submissions to Salesforce objects'),
   return $items;
+}
+
+/**
+ * Implements hook_springboard_admin_alias_patterns().
+ */
+function webform_user_springboard_admin_alias_patterns() {
+    return array(
+    // Market Source config page.
+    'admin/config/content/webform_user' => array(
+      'path' => array(
+        'regex' => '|^/admin/config/content/webform_user$|',
+        'replacement' => 'admin/config/content/webform_user',
+      ),
+      'alias' => array(
+        'regex' => '|^springboard/settings/config/webform-user$|',
+        'replacement' => 'springboard/settings/config/webform-user',
+      ),
+    ),
+  );
+}
+
+
+/**
+ * Implements hook_springboard_admin_admin_menu_items_alter().
+ */
+function webform_user_springboard_admin_admin_menu_items_alter(&$items) {
+  // Marketing & Analytics > Source Codes.
+  $items['admin/springboard/settings']['_children']['admin/springboard/settings/config']['_children']['admin/config/content/webform_user'] = array(
+    'link_path' => 'admin/config/content/webform_user',
+    'link_title' => 'Webform User',
+    'menu_name' => 'springboard_admin_menu',
+    'expanded' => 1,
+    'customized' => 1,
+    'weight' => 3,
+  );
+  /*
+  // Settings > Settings > Source Codes.
+  $items['admin/springboard/settings']['_children']['admin/springboard/settings/config']['_children']['admin/config/search/market-source'] = array(
+    'link_path' => 'admin/config/search/market-source',
+    'link_title' => 'Source Codes',
+    'menu_name' => 'springboard_admin_menu',
+    'expanded' => 1,
+    'customized' => 1,
+    'weight' => 7,
+  );
+  */
 }
 
 /**
@@ -401,6 +458,40 @@ function webform_user_form_alter(&$form, &$form_state, $form_id) {
         } // End if field is in component heirarchy.
       } // End foreach
     } // End if the user is logged in.
+
+    // If not logged in, check to see if the user has profile values in the current session from a previous submission.
+    // This will only be the case if the global option for saving webform_user submissions is enabled.
+    $webform_user_session_store = user_is_anonymous()
+      && isset($_SESSION['webform_user_submission_field_values'])
+      && is_array($_SESSION['webform_user_submission_field_values']);
+    if ($webform_user_session_store && _webform_user_is_webform_user_node($node)) {
+      $component_hierarchy = __webform_user_parse_components($node->nid, $components);
+      $map = webform_user_user_map($node->nid);
+       // Map each profile field if there's a matching component field.
+      foreach ($map as $webform_field => $profile_field) {
+        if (array_key_exists($webform_field, $component_hierarchy)) {
+          $form_field = &_webform_user_find_field($form, $component_hierarchy[$webform_field]);
+          if (isset($_SESSION['webform_user_submission_field_values'][$profile_field])) {
+            $profile_value = $_SESSION['webform_user_submission_field_values'][$profile_field];
+            // Set the value.
+            switch ($form_field['#type']) {
+              case 'date':
+                $form_field['#default_value'] = $profile_value;
+                break;
+              case 'checkboxes':
+                if ($profile_value) { // Will be a 0 if unchecked.
+                  $form_field['#default_value'] = array($profile_value);
+                }
+                break;
+              default:
+                $form_field['#default_value'] = check_plain($profile_value);
+                break;
+            }
+          } // End if webform empty with a value in the session
+        } // End if field is in component heirarchy
+      } // End foreach
+    }  // End if the user is anonymous
+
     // Add a new validation handler.
     $form['#validate'][] = 'webform_user_webform_validate';
     // Add new submit handler.
@@ -433,7 +524,7 @@ function webform_user_webform_validate($form, &$form_state) {
   if (_webform_user_is_webform_user_node($node) && !_webform_user_validate_email($mail)) {
     form_set_error('mail', t('Please enter a valid email address.'));
   }
-  // When user is logged in make sure email isn't updated to 
+  // When user is logged in make sure email isn't updated to
   // a value already in use by another account.
   if (!$skip_user_check && isset($user->mail)) {
     // Mail is being updated, confirm the supplied value isn't already in use.
@@ -477,6 +568,10 @@ function webform_user_webform_submit($form, &$form_state) {
         $submission->webform_user_skip_user_check = TRUE;
       }
       webform_submission_update($node, $submission);
+       // Save webform user fields in user session for the existing user
+      if (_webform_user_is_webform_user_session_store()) {
+        _webform_user_session_set($node->nid, $map);
+      }
     }
     // Anonymous user, new email to Drupal.
     elseif ($form_state['redirect']) {
@@ -493,11 +588,15 @@ function webform_user_webform_submit($form, &$form_state) {
       _webform_user_save_profile_map($account->uid, $map);
       $submission = webform_get_submission($node->nid, $form_state['values']['details']['sid']);
       $submission->uid = $account->uid;
-      // Setting this flag skips uid checking during presave. 
+      // Setting this flag skips uid checking during presave.
       if ($skip_user_check) {
         $submission->webform_user_skip_user_check = TRUE;
       }
       webform_submission_update($node, $submission);
+      // Save webform user fields in user session
+      if (_webform_user_is_webform_user_session_store()) {
+        _webform_user_session_set($node->nid, $map);
+      }
       // Send the e-mail through the user module.
       if ($node->send_new_user_email) {
         // Manually set the password so it appears in the e-mail.
@@ -505,6 +604,27 @@ function webform_user_webform_submit($form, &$form_state) {
         drupal_mail('user', 'register_no_approval_required', $user_fields['mail'], NULL, array('account' => $account), NULL);
       }
     }
+  }
+}
+/**
+ * Save submitted webform user field values in session
+ */
+function _webform_user_session_set($nid, $mapped_submission) {
+  $map = webform_user_user_map($nid);
+  $profile_values = array();
+  // Reverse the mapping back to the webform keys.
+  foreach ($map as $webform_key => $profile_key) {
+    if (isset($mapped_submission[$profile_key])) {
+      $profile_values[$webform_key] = $mapped_submission[$profile_key];
+    }
+  }
+
+  // Update any previous stored field values.
+  if (isset($_SESSION['webform_user_submission_field_values']) && is_array($_SESSION['webform_user_submission_field_values'])) {
+    $_SESSION['webform_user_submission_field_values'] = array_merge($_SESSION['webform_user_submission_field_values'], $mapped_submission);
+  }
+  else {
+    $_SESSION['webform_user_submission_field_values'] = $mapped_submission;
   }
 }
 
@@ -1069,19 +1189,42 @@ function _webform_user_is_webform_user_node_type($type) {
 }
 
 /**
- * Helper function, return a map of webform components to user profile fields.
+ * Helper function, check if webform_user should save submission values to session
+ */
+function _webform_user_is_webform_user_session_store() {
+  return variable_get('webform_user_session_store', FALSE);
+}
+
+/**
+ * Get an array of webform component values keyed to user profile fields.
+ *
+ * @param int $nid
+ *   Node ID. Used to get the webform component to user profile map.
+ * @param array $fields
+ *   The webform component fields, keyed by the webform form key.
+ * @return array
+ *   An array of field valudes keyed by user profile field names.
  */
 function _webform_user_get_map($nid, $fields) {
-  $map = webform_user_user_map($nid);
-  if ($map) {
-    foreach ($map as $key => $value) {
+  $webform_map = webform_user_user_map($nid);
+  $user_map = array();
+
+  if ($webform_map) {
+    // If address is set in the fields but not address line 2,
+    // then set address line 2 to an empty string so it'll overwrite the
+    // existing value.
+    if (isset($fields['address']) && !isset($fields['address_line_2'])) {
+      $fields['address_line_2'] = '';
+    }
+
+    foreach ($webform_map as $key => $value) {
       if (isset($fields[$key])) {
-        $map2[$value] = $fields[$key];
+        $user_map[$value] = $fields[$key];
       }
     }
-    return $map2;
   }
-  return array();
+
+  return $user_map;
 }
 
 /**
@@ -1308,7 +1451,12 @@ function _webform_user_delete_node_values($node) {
 }
 
 /**
- * Database function, creates an array to map webform component fields to user profile fields from DB.
+ * Creates an array to map webform component fields to user profile fields.
+ *
+ * @param int $nid
+ *   The node ID to lookup.
+ * @return array
+ *   An array of fields names or map ids, keyed by webform form id.
  */
 function webform_user_user_map($nid) {
   $map = array();
@@ -1541,3 +1689,41 @@ function _webform_user_mail_in_use($mail, $uid) {
   return FALSE;
 }
 
+/**
+ * Implements hook_webform_component_render_alter().
+ *
+ * Run token_replace() on text based webform components with node tokens.
+ */
+function webform_user_webform_component_render_alter(&$element, $component) {
+  // #default_value is used by the following types according to the api.
+  // checkbox, checkboxes, date, hidden, radio, radios, select, tableselect,
+  // textarea, text_format, textfield, token, weight.
+
+  // But token replacement probably only makes sense for these types.
+  $types = array('textfield', 'hidden', 'markup', 'textarea');
+
+  if (in_array($element['#type'], $types) && isset($element['#default_value']) && !empty($element['#default_value'])) {
+    $element['#default_value'] = webform_user_replace_tokens_in_component($element['#default_value'], $component['nid']);
+  }
+  // Special case for value elements.
+  elseif ($element['#type'] == 'value' && isset($element['#value']) && !empty($element['#value'])) {
+    $element['#value'] = webform_user_replace_tokens_in_component($element['#value'], $component['nid']);
+  }
+}
+
+/**
+ * Replace the tokens in a webform component's value or default_value.
+ *
+ * @param string $value
+ *   The text with tokens in it.
+ * @param int $nid
+ *   The webform node ID to get the tokens from.
+ *
+ * @return string
+ *   The replaced text.
+ */
+function webform_user_replace_tokens_in_component($value, $nid) {
+  $token_data = array('node' => node_load($nid));
+
+  return token_replace($value, $token_data, array('clear' => TRUE));
+}

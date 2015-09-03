@@ -2,6 +2,7 @@ name = Fundraiser Commerce
 description = Implements donation handling for Fundraiser with Commerce.
 core = 7.x
 package = Jackson River Springboard
+dependencies[] = addressfield (>=7.x-1.0)
 dependencies[] = fundraiser
 dependencies[] = commerce_order
 dependencies[] = commerce_payment

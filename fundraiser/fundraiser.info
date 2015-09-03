@@ -4,7 +4,12 @@ core = 7.x
 version = 7.x-4.x-dev
 package = Jackson River Springboard
 configure = admin/config/system/fundraiser
+
 dependencies[] = token
+dependencies[] = commerce
+dependencies[] = list
+dependencies[] = entity
+
 ;Testing files
 files[] = tests/fundraiser.test
 ;files[] = tests/fundraiser.unit.test

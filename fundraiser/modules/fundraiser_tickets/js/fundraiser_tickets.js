@@ -43,12 +43,12 @@
     total = self.calcTotal(),
     extra = self.calcExtra(),
     totalQuantity = self.calcQuantity();
-    $('#fundraiser-tickets-total-cost').text('$ ' + (total).formatMoney(2, '.', ','));
-    $('#fundraiser-tickets-extra-donation-display').text('$ ' + (extra).formatMoney(2, '.', ','));
+    $('#fundraiser-tickets-total-cost').text(Drupal.settings.fundraiser.currency.symbol + (total).formatMoney(2, '.', ','));
+    $('#fundraiser-tickets-extra-donation-display').text(Drupal.settings.fundraiser.currency.symbol + (extra).formatMoney(2, '.', ','));
     $("input[name='submitted[amount]']").val((total).formatMoney(2, '.', ''));
     $('#fundraiser-tickets-total-quant').text(totalQuantity);
     $.each(self.ticketPrices, function(productId, price) {
-      $('#product-' + productId + '-tickets-total').text('$ ' + (self.calcField(productId, price)).formatMoney(2, '.', ','));
+      $('#product-' + productId + '-tickets-total').text(price.currency.symbol + (self.calcField(productId, price.amount)).formatMoney(2, '.', ','));
     });
   }
 
@@ -56,7 +56,7 @@
    * Calculate the value of a field
    */
   Drupal.fundraiserTickets.prototype.calcField = function(productId, price) {
-    return $('#product-' + productId + '-ticket-quant').val() * price;
+    return $('#product-' + productId + '-ticket-quant').val() * parseFloat(price.replace(/\,/g,''));
   }
 
   /**
@@ -66,7 +66,7 @@
     var self = this;
     var total = 0;
     $.each(self.ticketPrices, function(productId, price) {
-      total = total + (price * $('#product-' + productId + '-ticket-quant').val());
+      total = total + (parseFloat(price.amount.replace(/\,/g,'')) * $('#product-' + productId + '-ticket-quant').val());
     });
     if ($('#fundraiser-tickets-extra-donation').val()){
       total = total + parseFloat($('#fundraiser-tickets-extra-donation').val());

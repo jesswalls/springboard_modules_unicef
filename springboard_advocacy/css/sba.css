@@ -1,0 +1,53 @@
+/*** Dashboard landing page styles ***/
+
+.sba-button, .sba-add-button.button {
+    float: right;
+    display: inline-block;
+    margin: 6px 5px;
+}
+
+.sba-add-button.button:before {
+    display: inline-block;
+    margin: 0 8px 0 0;
+    color: #FFF;
+    content: "";
+    font-family: FontAwesome;
+}
+
+#views-form-sba-messages-node-block-1 .tabledrag-toggle-weight-wrapper {
+    text-align: left;
+}
+
+#views-exposed-form-sba-custom-targets-block-1 {
+    margin-top:1.5em;
+}
+
+#views-exposed-form-sba-custom-targets-block-1 select {
+    margin-bottom: 0;
+    min-width: 190px;
+}
+
+#views-exposed-form-sba-custom-targets-block-1 select option{
+    margin-left: 5px;
+}
+
+#views-exposed-form-sba-custom-targets-block-1 .form-type-select.control-group {
+    margin-bottom: 5px;
+}
+
+#views-exposed-form-sba-custom-targets-block-1 .form-type-select.control-group {
+    margin-bottom: 5px;
+}
+
+#edit-search-gender-wrapper label, #edit-search-state-wrapper label {
+    margin-bottom: 3px;
+}
+
+#views-exposed-form-sba-custom-targets-block-1 .views-exposed-widget {
+    margin-right: 10px;
+}
+
+#views-exposed-form-sba-custom-targets-block-1 #edit-combine {
+    border-radius: 5px;
+    width: 190px;
+}

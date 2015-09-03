@@ -1,0 +1,6 @@
+name = Fundraiser Commerce Paypal Payflow
+description = Implements Commerce Paypal Payflow pro
+package = Jackson River Springboard
+dependencies[] = fundraiser_commerce
+dependencies[] = commerce_payflow
+core = 7.x

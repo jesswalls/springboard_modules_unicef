@@ -1,0 +1,189 @@
+.webform-client-form {
+    clear: both;
+}
+
+#call-to-action-call {
+    font-weight: bold;
+    margin-bottom: 1em;
+}
+
+#call-to-action .field.field-name-body {
+    margin: 0;
+}
+
+#take-action-wrapper {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #d5d5d5;
+    padding: 0 20px 20px ;
+    margin-bottom: 40px;
+    border-radius: 4px;
+}
+
+#take-action-wrapper > legend{
+    border:none;
+    padding: 0 10px;
+    margin-bottom: 0;
+    width: auto;
+}
+
+#take-action-wrapper fieldset legend {
+    font-size: 18px;
+}
+
+#your-information-wrapper {
+    clear: left;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    padding-right: 20px;
+}
+
+#your-information-wrapper fieldset legend {
+    font-size: 18px;
+}
+
+#sba-messages-form label,
+#sba-messages-form .description {
+    font-weight: bold;
+}
+
+#edit-actions {
+    clear:both;
+    background-color: #fff;
+    border-top: none;
+    padding: 0;
+    margin: 0;
+}
+
+#edit-actions input {
+    width: 94.5%;
+    background: #247AAD;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    margin-left: 0;
+    font-size: 1.5em;
+    padding: 10px 0;
+    text-shadow: none;
+}
+
+#edit-actions input:hover {
+    background: #1E72A3;
+}
+
+#sba-messages-form {
+    clear: both;
+}
+
+#your-information-wrapper #webform-component-sbp-salutation.control-group {
+    width: 20%;
+    float: left;
+    clear:none;
+    margin-top: 0;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+#your-information-wrapper #webform-component-sbp-first-name.control-group,
+#your-information-wrapper #webform-component-sbp-last-name.control-group {
+    float: left;
+    clear:none;
+    width:39.5%;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    padding-left:10px;
+}
+
+#your-information-wrapper #webform-component-sbp-salutation.control-group select {
+    width: 100%;
+}
+
+#your-information-wrapper #webform-component-sbp-first-name.control-group input,
+#your-information-wrapper #webform-component-sbp-last-name.control-group input {
+    width:90%;
+}
+
+#your-information-wrapper #webform-component-mail.control-group input {
+    width: 95%;
+}
+
+#your-information-wrapper #webform-component-sbp-address.control-group,
+#your-information-wrapper #webform-component-sbp-address-line-2.control-group {
+    float: left;
+    clear:none;
+    width:50%;
+}
+
+#your-information-wrapper #webform-component-sbp-address.control-group input,
+#your-information-wrapper #webform-component-sbp-address-line-2.control-group input {
+    width:90%;
+}
+#your-information-wrapper #webform-component-sbp-address-line-2.control-group {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    padding-left: 10px;
+}
+
+#your-information-wrapper #webform-component-sbp-city.control-group input {
+    width: 95%;
+}
+
+#your-information-wrapper #webform-component-sbp-state.control-group,
+#your-information-wrapper #webform-component-sbp-zip.control-group {
+    float: left;
+    clear:none;
+    width:50%;
+}
+
+#your-information-wrapper #webform-component-sbp-state.control-group select,
+#your-information-wrapper #webform-component-sbp-zip.control-group input {
+    width:90%;
+}
+
+#your-information-wrapper #webform-component-sbp-phone.control-group input {
+    width: 95%;
+}
+
+textarea[id*="edit-sba-messages-message"] {
+    width: 95%;
+    min-height: 200px;
+}
+
+#edit-actions {
+    clear: none;
+}
+
+.node-sba-message-action .field-name-field-message-action-img img {
+    display: block;
+    margin: 0 auto;
+}
+
+#edit-actions {
+    background: none;
+    width: 40%;
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+fieldset[id*="edit-sba-messages-message"]  input[name*="subject"] {
+    width: 95%;
+}
+
+form#sba-quicksign-form, #participants-container {
+    margin: 1.5em;
+}
+
+form#sba-quicksign-form {
+    margin-top: 0;
+}
+
+#participants-container table {
+    width: 100%;
+}

@@ -407,3 +407,87 @@ function springboard_enable_new_panes() {
   }
   variable_set('springboard_enabled_panes', $enabled_panes);
 }
+
+/**
+ * Implements hook_modules_enabled().
+ */
+function springboard_modules_enabled($modules) {
+  // Get the Springboard roles.
+  $sb_admin_role = user_role_load_by_name('Springboard administrator');
+  $sb_editor_role = user_role_load_by_name('Springboard editor');
+
+  if (in_array('springboard_target', $modules)) {
+    // Set Springboard administrator permissions for targets.
+    if ($sb_admin_role) {
+      user_role_grant_permissions($sb_admin_role->rid, array(
+        'add target to action',
+        'delete targets',
+        'edit targets',
+        'create targets',
+        'view targets',
+        )
+      );
+    }
+
+    // Set Springboard editor permissions for targets.
+    if ($sb_editor_role) {
+      user_role_grant_permissions($sb_editor_role->rid, array(
+        'add target to action',
+        'view targets',
+        )
+      );
+    }
+  }
+
+  if (in_array('sba_message_action', $modules)) {
+    // Set Springboard administrator permissions for targets.
+    if ($sb_admin_role) {
+      user_role_grant_permissions($sb_admin_role->rid, array(
+        'create sba_message_action content',
+        'edit own sba_message_action content',
+        'edit any sba_message_action content',
+        'delete own sba_message_action content',
+        'delete any sba_message_action content',
+        )
+      );
+    }
+
+    // Set Springboard editor permissions for targets.
+    if ($sb_editor_role) {
+      user_role_grant_permissions($sb_editor_role->rid, array(
+        'create sba_message_action content',
+        'edit own sba_message_action content',
+        'edit any sba_message_action content',
+        'delete own sba_message_action content',
+        'delete any sba_message_action content',
+        )
+      );
+    }
+  }
+
+  if (in_array('springboard_petition', $modules)) {
+    // Set Springboard administrator permissions for targets.
+    if ($sb_admin_role) {
+      user_role_grant_permissions($sb_admin_role->rid, array(
+        'create springboard_petition content',
+        'edit own springboard_petition content',
+        'edit any springboard_petition content',
+        'delete own springboard_petition content',
+        'delete any springboard_petition content',
+        )
+      );
+    }
+
+    // Set Springboard editor permissions for targets.
+    if ($sb_editor_role) {
+      user_role_grant_permissions($sb_editor_role->rid, array(
+        'create springboard_petition content',
+        'edit own springboard_petition content',
+        'edit any springboard_petition content',
+        'delete own springboard_petition content',
+        'delete any springboard_petition content',
+        )
+      );
+    }
+  }
+}

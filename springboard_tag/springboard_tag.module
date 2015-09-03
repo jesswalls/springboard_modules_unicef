@@ -1,0 +1,317 @@
+<?php
+
+/**
+ * Implements hook_permission()
+ */
+function springboard_tag_permission() {
+  return array(
+    'administer springboard tags' => array(
+      'title' => t('Administer Springboard tags'),
+      'description' => t('Add, delete and edit tags.'),
+      'restrict access' => TRUE,
+    ),
+  );
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function springboard_tag_ctools_plugin_directory($module, $plugin) {
+  // Most of this module is implemented as an export ui plugin, and the
+  // rest is in ctools/includes/ctools_access_ruleset.inc
+  if ($module == 'ctools' && $plugin == 'export_ui') {
+    return 'plugins/' . $plugin;
+  }
+}
+
+/**
+ * Implements hook_ctools_plugin_api().
+ */
+function springboard_tag_ctools_plugin_api($module, $api) {
+  if ($module == 'springboard_tag' && $api == 'springboard_tag') {
+    return array('version' => 1);
+  }
+}
+
+/**
+ * Implements hook_springboard_admin_menu_items_alter().
+ */
+function springboard_tag_springboard_admin_admin_menu_items_alter(&$items) {
+  // Add a menu item for the admin page.
+  $items['admin/springboard/marketing-analytics']['_children']['admin/springboard/springboard-tags'] = array(
+    'link_path' => 'admin/springboard/springboard-tags',
+    'link_title' => 'Tags',
+    'menu_name' => 'springboard_admin_menu',
+    'expanded' => 1,
+    'customized' => 1,
+    'weight' => 10,
+  );
+}
+
+/**
+ * Return an array of tag placement options.
+ */
+function _springboard_tag_placement_options() {
+  return array(
+    'head' => 'In the head tag',
+    'after body tag' => 'Directly after the opening body tag',
+    'content' => 'Main content',
+  );
+}
+
+/**
+ * Create callback for creating a new CTools custom content type.
+ *
+ * This ensures we get proper defaults from the plugin for its settings.
+ */
+function _springboard_tag_new($set_defaults) {
+  $item = ctools_export_new_object('springboard_tag', $set_defaults);
+  $plugin = ctools_get_plugins('ctools', 'export_ui', 'springboard_tag');
+  $item->settings = $plugin['defaults']['settings'];
+  return $item;
+}
+
+/**
+ * Implements hook_page_alter().
+ *
+ * @param array $page
+ */
+function springboard_tag_page_alter(&$page) {
+  // Load the tags for this page.
+  $tags = _springboard_tag_load_tags();
+  if (empty($tags)) {
+    return;
+  }
+
+  foreach ($tags as $tag) {
+    switch ($tag->settings['placement']) {
+      case 'after body tag' :
+        $after_body[] = _springboard_tag_generate_tag($tag->tag);
+        break;
+      case 'content' :
+        $content[] = _springboard_tag_generate_tag($tag->tag);
+        break;
+    }
+  }
+
+  if (!empty($after_body)) {
+    // Add a post render function, and the tags.
+    $page['#post_render'][] = '_springboard_tag_post_render';
+    $page['#springboard_tag_after_body'] = implode("\n", $after_body);
+  }
+
+  if (!empty($content)) {
+    // Add the content tags.
+    $page['content']['springboard_tag'] = array(
+      '#markup' => implode("\n", $content),
+    );
+  }
+}
+
+
+/**
+ * Implements hook_html_head_alter
+ *
+ * Add springboard tags to the head tag.
+ */
+function springboard_tag_html_head_alter(&$head_content) {
+  // Load the tags for this page.
+  $tags = _springboard_tag_load_tags();
+  if (empty($tags)) {
+    return;
+  }
+
+  foreach ($tags as $tag) {
+    switch ($tag->settings['placement']) {
+      case 'head' :
+        $head[] = _springboard_tag_generate_tag($tag->tag);
+        break;
+    }
+  }
+  if (!empty($head)) {
+    // Add the content tags.
+    $head_content['springboard_tag'] = array(
+      '#markup' => "\n" . implode("\n", $head) . "\n",
+    );
+  }
+}
+
+/**
+ * Add the after body tags to the page HTML.
+ */
+function _springboard_tag_post_render(&$children, $elements) {
+  // Split the document at the body tag and insert snippet after the opening body tag.
+  $matches = preg_split('/(<body.*?>)/i', $children, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+  return $matches[0] . $matches[1] . "\n" . $elements['#springboard_tag_after_body'] . $matches[2];
+}
+
+/**
+ * Generate the tag snippet.
+ *
+ * @param string $snippet
+ *   The contents of the tag.
+ *
+ * @return string
+ *   The final tag code to be placed into the page.
+ */
+function _springboard_tag_generate_tag($snippet) {
+  global $user;
+
+  // Build an array of context for the tag generating script.
+  $token_set = array();
+
+  // Include the the current node.
+  if (arg(0) == 'node' && is_numeric(arg(1))) {
+    $token_set['node'] = node_load(arg(1));
+  }
+
+  // Include the current user.
+  $token_set['user'] = user_load($user->uid);
+
+  // Add the donation if this is a donation confirmation.
+  if (arg(0) == 'node' && arg(2) == 'done' && !empty($_GET['sid'])) {
+    $donation = _fundraiser_webform_get_donation_by_sid($_GET['sid']);
+    if ($donation) {
+      $token_set['donation'] = $donation;
+    }
+  }
+
+  return token_replace($snippet, $token_set, array('clear' => TRUE));
+}
+
+/**
+ * Load the tags for a page request.
+ */
+function _springboard_tag_load_tags() {
+  $tags = &drupal_static(__FUNCTION__);
+
+  if (!isset($tags)) {
+    // Load all the configured tags.
+    ctools_include('export');
+    $tags = ctools_export_crud_load_all('springboard_tag');
+
+    usort($tags, '_springboard_tag_load_tags_sort');
+
+    // Allow modules to modify the tag list.
+    drupal_alter('springboard_tag_list', $tags);
+  }
+
+  return $tags;
+}
+
+/**
+ * Array sort function to sort by weight.
+ */
+function _springboard_tag_load_tags_sort($a, $b) {
+  if ($a->weight == $b->weight) {
+    return 0;
+  }
+
+  return $a->weight < $b->weight ? -1 : 1;
+}
+
+/**
+ * Implements hook_springboard_tag_list_alter().
+ *
+ * @param array $tags
+ *   An array of tags loaded through ctools.
+ */
+function springboard_tag_springboard_tag_list_alter(&$tags) {
+  $account = $GLOBALS['user'];
+
+  foreach ($tags as $key => $tag) {
+    // Extract the visibilty array. Contains the keys: fundraiser, user, path, node.
+    extract($tag->settings['visibility']);
+
+    // Remove disabled tags.
+    if (!empty($tag->disabled)) {
+      unset($tags[$key]);
+      continue;
+    }
+
+    // Check if the fundraiser confirmation option is checked.
+    if (!empty($fundraiser['confirmation'])) {
+      // This tag should only appear on a confirmation page.
+      if (arg(0) == 'node' && arg(2) == 'done') {
+        $webform_node = node_load(arg(1));
+        // If this is not a donation type, unset the tag.
+        if (!fundraiser_is_donation_type($webform_node->type)) {
+          unset($tags[$key]);
+          continue;
+        }
+      }
+      else {
+        unset($tags[$key]);
+        continue;
+      }
+    }
+
+    // Check if the current user should not see this tag by role.
+    // For tags with roles associated, if any of the user's roles matches
+    // the settings from this tag, remove it from the tag list.
+    if (array_filter($user['roles'])) {
+      // One or more roles are selected.
+      foreach (array_keys($account->roles) as $rid) {
+        // Is the current user a member of one of these roles?
+        if (isset($user['roles'][$rid]) && $rid == $user['roles'][$rid]) {
+          // Current user is a member of a role that should be excluded from seeing this tag.
+          unset($tags[$key]);
+          continue;
+        }
+      }
+    }
+
+    // Limited visibility blocks must list at least one page.
+    if ($path['page_specific'] == BLOCK_VISIBILITY_LISTED && empty($path['pages'])) {
+      unset($tags[$key]);
+      continue;
+    }
+
+    // Match path if necessary.
+    if (!empty($path['pages'])) {
+      // Convert path to lowercase. This allows comparison of the same path
+      // with different case. Ex: /Page, /page, /PAGE.
+      $pages = drupal_strtolower($path['pages']);
+
+      // Convert the Drupal path to lowercase
+      $drupal_path = drupal_strtolower(drupal_get_path_alias($_GET['q']));
+      // Compare the lowercase internal and lowercase path alias (if any).
+      $page_match = drupal_match_path($drupal_path, $path['pages']);
+      if ($path != $_GET['q']) {
+        $page_match = $page_match || drupal_match_path($_GET['q'], $path['pages']);
+      }
+      // When $path['page_specific'] has a value of 0 (BLOCK_VISIBILITY_NOTLISTED),
+      // the tag is displayed on all pages except those listed in $path['pages'].
+      // When set to 1 (BLOCK_VISIBILITY_LISTED), it is displayed only on those
+      // pages listed in $path['pages'].
+      $page_match = !($path['page_specific'] xor $page_match);
+    }
+    else {
+      $page_match = TRUE;
+    }
+
+    if (!$page_match) {
+      unset($tags[$key]);
+      continue;
+    }
+
+    // Check the node type.
+    if (array_filter($node['type'])) {
+      if (arg(0) == 'node' && is_numeric(arg(1))) {
+        $current_node = node_load(arg(1));
+      }
+
+      // If this is a node page check the node type setting.
+      if (!empty($current_node)) {
+        // Remove if this tag is not set to display on this node type.
+        if (empty($node['type'][$current_node->type])) {
+          unset($tags[$key]);
+        }
+      }
+      else {
+        // This is not a node page, remove the tag.
+        unset($tags[$key]);
+      }
+    }
+  }
+}

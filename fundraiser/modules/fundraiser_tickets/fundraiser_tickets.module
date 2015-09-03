@@ -587,6 +587,17 @@ function _fundraiser_tickets_ticket_settings_form_validate(&$form, &$form_state)
     if (empty($addon)) {
       form_set_error('fr_tickets_donation_addon_form', t('When add-on donations are enabled, "Donation form to Use for Add-ons" is required.'));
     }
+    else {
+      $addon_currency = fundraiser_get_currency_from_node(node_load($addon));
+      $this_currency = fundraiser_get_currency_from_node($form['#node']);
+      if ($this_currency['code'] != $addon_currency['code']) {
+        $replacements = array(
+          '%addon' => $addon_currency['code'],
+          '%this' => $this_currency['code'],
+        );
+        form_set_error('fr_tickets_donation_addon_form', t('The currency of the add-on donation form (%addon) does not match the currency of this form (%this).', $replacements));
+      }
+    }
   }
 
   $closed = $form_state['values']['fr_tickets_closed_options'][LANGUAGE_NONE][0]['value'];
@@ -673,7 +684,7 @@ function fundraiser_tickets_node_view($node, $view_mode, $langcode) {
           drupal_set_message($message, 'error');
         }
       }
-      
+
       elseif(fundraiser_tickets_is_closed($node)) {
         $access = fundraiser_tickets_manage_access($node);
         $node_wrapper = entity_metadata_wrapper('node', $node);
@@ -806,6 +817,28 @@ function fundraiser_tickets_clone_node_alter(&$node, $context) {
   }
 }
 
+/**
+ * Implements hook_node_update().
+ */
+function fundraiser_tickets_node_update($node) {
+  if (!fundraiser_tickets_is_ticket_type($node->type)) {
+    return;
+  }
+
+  // Change the currency value on the ticket products.
+  $node_wrapper = entity_metadata_wrapper('node', $node);
+  if (is_array($node_wrapper->fr_tickets_ticket_types->value())) {
+    foreach ($node_wrapper->fr_tickets_ticket_types->value() as $ticket_type) {
+      $currency = fundraiser_get_currency_from_node($node);
+      $ticket_type->commerce_price[LANGUAGE_NONE][0]['currency_code'] = $currency['code'];
+
+      // Set this value so the inventory processes do not run.
+      $ticket_type->fundraiser_tickets_skip_inventory = TRUE;
+      commerce_product_save($ticket_type);
+    }
+  }
+}
+
 
 /**
  * Implements hook_form_alter().
@@ -820,6 +853,22 @@ function fundraiser_tickets_form_commerce_product_ui_product_form_alter(&$form, 
     $form['fr_tickets_quantity_sold']['#disabled'] = TRUE;
     $form['#validate'][] = 'fundraiser_tickets_form_commerce_product_ui_product_form_validate';
     unset($form['actions']['save_continue']);
+
+    $destination = drupal_get_destination();
+    $destination_parts = explode('/', $destination['destination']);
+
+    if (count($destination_parts) == 4 && $destination_parts[0] == 'node' && is_numeric($destination_parts[1]) && $destination_parts[2] == 'tickets' && $destination_parts[3] == 'tickets') {
+      $currency = fundraiser_get_currency_from_node(node_load($destination_parts[1]));
+
+      $commerce_price_language = $form['commerce_price']['#language'];
+      $form['commerce_price'][$commerce_price_language][0]['currency_code']['#default_value'] = $currency['code'];
+      $form['commerce_price'][$commerce_price_language][0]['currency_code']['#access'] = FALSE;
+      $form['commerce_price'][$commerce_price_language][0]['currency_code_markup'] = array(
+        '#markup' => $currency['code'],
+        '#suffix' => '</div>',
+      );
+    }
+
   }
 }
 
@@ -874,7 +923,8 @@ function fundraiser_tickets_commerce_product_insert($product) {
  * Update the total available tickets available on the associated ticket page node.
  */
 function fundraiser_tickets_commerce_product_update($product) {
-  if ($product->type == 'fundraiser_ticket') {
+  // Check for the skip inventory flag before updating values.
+  if ($product->type == 'fundraiser_ticket' && empty($product->fundraiser_tickets_skip_inventory)) {
     if ($nid = _fundraiser_tickets_find_product_node($product->product_id)) {
       $node_wrapper = entity_metadata_wrapper('node', node_load($nid));
       fundraiser_tickets_update_inventory($node_wrapper);

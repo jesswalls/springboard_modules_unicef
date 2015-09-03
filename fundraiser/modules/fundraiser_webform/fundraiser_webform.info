@@ -4,6 +4,7 @@ core = 7.x
 package = Jackson River Springboard
 dependencies[] = webform
 dependencies[] = fundraiser
+dependencies[] = commerce
 version = 7.x-4.x-dev
 ;Testing files
 ;files[] = tests/fundraiser_webform.unit.test

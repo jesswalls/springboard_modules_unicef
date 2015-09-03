@@ -1,0 +1,691 @@
+<?php
+
+/**
+ * @file
+ * Module for the SBA Message Entity.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function sba_message_menu() {
+  $items['node/%/messages'] = array(
+    'title' => 'Messages',
+    'page arguments' => array(1),
+    'access callback' => 'sba_message_access',
+    'access arguments' => array('manage-messages'),
+    'type' => MENU_LOCAL_TASK,
+  ) + springboard_advocacy_menu_common(TRUE, TRUE);
+
+  // Committee Search Selector autocomplete path.
+  $items['message-action/committee/autocomplete'] = array(
+    'page callback' => '_sba_message_committee_autocomplete',
+    'access arguments' => array('add target to action'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Determines whether the given user has access to a sba_message.
+ *
+ * @param string $op
+ *   The operation being performed. One of 'view', 'update', 'create', 'delete'
+ *   or just 'edit' (being the same as 'create' or 'update').
+ * @param mixed $sba_message
+ *   Optionally a sba_message or a sba_message type to check access for.
+ *   If nothing is given, access for all sba_messages is determined.
+ * @param mixed $account
+ *   The user to check for. Leave it to NULL to check for the global user.
+ *
+ * @return bool
+ *   Whether access is allowed or not.
+ */
+function sba_message_access($op, $sba_message = NULL, $account = NULL) {
+  // Messages will inherit create/edit/delete permissions from
+  // their parent node permissions.
+  global $user;
+  if (arg(0) == 'node' && is_numeric(arg(1))) {
+    $node = node_load(arg(1));
+    $types = variable_get('sba_action_types', array());
+    if ((isset($node->type) && !in_array($node->type, $types)) || empty($node->type)) {
+      return FALSE;
+    }
+
+    // If a message is user editable, disable creation or additional
+    // messages for that node.
+    if (arg(2) == 'messages' && arg(3) == 'add') {
+      if (isset($node->message_ids)) {
+        $messages = entity_load('sba_message', $node->message_ids);
+        if (count($messages) == 1) {
+          $message = array_pop($messages);
+          $subject_editable = field_get_items('sba_message', $message, 'field_sba_subject_editable');
+          $user_editable = field_get_items('sba_message', $message, 'field_sba_user_editable');
+          if ($subject_editable[0]['value'] != 'Not editable' || !empty($user_editable)) {
+            $loglink = l(t("Return to message admin."), 'springboard/node/' . $node->nid . '/messages');
+            drupal_set_message(t("This action's current message is user-editable, additional messages may not be created for this action until user editing is disabled. !link", array('!link' => $loglink)), 'error', FALSE);
+            return FALSE;
+          }
+        }
+      }
+    }
+
+    if (user_access('administer sba messages', $account)) {
+      return TRUE;
+    }
+
+    if (user_access("{$op} any {$node->type} content")) {
+      return TRUE;
+    }
+
+    // Message tab on node view page.
+    $arg = arg(3);
+    if ($op == 'manage-messages' && empty($arg)) {
+      if (user_access("create {$node->type} content")) {
+        return TRUE;
+      }
+    }
+
+    if ($op == 'create' && user_access("create {$node->type} content")) {
+      if (user_access("edit own {$node->type} content") &&  $node->uid == $user->uid) {
+        return TRUE;
+      }
+      if (user_access("edit any {$node->type} content")) {
+        return TRUE;
+      }
+    }
+
+    if (user_access("{$op} own {$node->type} content") &&  $node->uid == $user->uid) {
+      return TRUE;
+    }
+    elseif (user_access("{$op} own {$node->type} content") &&  $node->uid != $user->uid) {
+      return FALSE;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Implements hook_entityreference_prepopulate_providers_info().
+ *
+ * Grab our entity reference from the node url rather than query string.
+ */
+function sba_message_entityreference_prepopulate_providers_info() {
+  return array(
+    'node_url' => array(
+      'title' => t('Node URL'),
+      'description' => t('Prepopulate reference ID from node/%/message URL. Only for use by Springboard Advocacy content types.'),
+      'callback' => 'sba_message_prepopulate_get_values_from_node_url',
+    ),
+  );
+}
+
+/**
+ * Get values for pre-populating fields via URL.
+ *
+ * @param $field
+ *   The field info array.
+ * @param $instance
+ *   The instance info array.
+ *
+ * @return array
+ *   An array containing the node ID
+ *
+ * @see entityreference_prepopulate_get_values()
+ */
+function sba_message_prepopulate_get_values_from_node_url($field, $instance) {
+  $id = array();
+  if (arg(0) == 'node' && arg(2) == 'messages' && is_numeric(arg(1))) {
+    $id = array(arg(1));
+  }
+  return $id;
+}
+
+/**
+ * Implements hook_form_FORMID_alter().
+ *
+ * Add an options checkbox to the message landing page draggable form.
+ */
+function sba_message_form_views_form_sba_messages_node_block_1_alter(&$form, &$form_state, $form_id) {
+
+  $messages = $form_state['build_info']['args'][0]->result;
+  if (isset($messages) && count($messages) > 1) {
+    $precedence = db_query("SELECT precedence FROM {sba_form_id} WHERE nid = :nid", array(':nid' => arg(1)))->fetchField();
+    $val = !empty($precedence) ? $precedence : 0;
+
+    $form['precedence'] = array(
+      '#type' => 'checkbox',
+      '#weight' => 99,
+      '#title' => t('Use message order.'),
+      '#default_value' => $val,
+      '#description' => t("Check this box if you wish to enforce message ' .
+        'precedence by sort order. If you check this box, only the first message ' .
+        'that is eligible  for delivery to elected officials - via the user's zip ' .
+        'code/congressional district verification - will be sent. ' .
+        'The subsequent messages will be ignored."),
+    );
+    $form['actions']['submit']['#submit'][] = 'sba_message_drag_submit';
+  }
+  else {
+    unset($form['actions']);
+  }
+}
+
+/**
+ * Auxiliary submit function for draggable message landing table.
+ *
+ * Save the value for the precedence option from the message landing
+ * page draggable form into the message entity data array.
+ * Message weight will be used by the API to filter
+ * deliverable messages.
+ *
+ * @param $form
+ * @param $form_state
+ */
+function sba_message_drag_submit(&$form, &$form_state) {
+  $precedence = $form_state['values']['precedence'];
+  if (arg(0) == 'node' && is_numeric(arg(1))) {
+    $record = array(
+      'nid' => arg(1),
+      'precedence' => $precedence,
+    );
+    drupal_write_record('sba_form_id', $record, array('nid'));
+  }
+  $messages = $form_state['values']['draggableviews'];
+  foreach ($messages as $message) {
+    if (isset($message['id'])) {
+      $sba_message = sba_message_load($message['id']);
+      $sba_message->data['weight'] = $message['weight'];
+      $sba_message->data['precedence'] = $precedence;
+      $sba_message->save();
+    }
+  }
+}
+
+/**
+ * Implements hook_node_delete().
+ *
+ * When an action node is deleted, delete its messages.
+ */
+function sba_message_node_delete($node) {
+  $types = variable_get('sba_action_types', array());
+  if (in_array($node->type, $types)) {
+    $sba_message_ids = db_query(
+      'SELECT entity_id FROM {field_data_field_sba_action_id} a WHERE a.field_sba_action_id_target_id = :nid',
+      array(':nid' => $node->nid))
+      ->fetchAllAssoc('entity_id');
+
+    sba_message_delete_multiple(array_keys($sba_message_ids));
+  }
+}
+
+
+/**
+ * Autocomplete callback to populate committee list dropdown.
+ *
+ * @param string $name
+ *   The value of the autocomplete textfield.
+ * @param string $state
+ *   The value of the state field.
+ * @param string $chamber
+ *   The value of the chamber field.
+ */
+function _sba_message_committee_autocomplete($name, $state, $chamber) {
+  $matches = array();
+
+  // Retrieve committee list from cache or via API call if not cached.
+  $api_call = new AdvocacyApiCall();
+  $committee_list = $api_call->getCommittees();
+
+  // Grep the results using patterns based on form input.
+  $name_pattern = '/' . $name . '/i';
+  $state_pattern = '/\(' . $state . '\)/i';
+  $chamber_pattern = '/\(' . $chamber . '\)/i';
+
+  if (!empty($committee_list)) {
+    $results = preg_grep($name_pattern, $committee_list);
+    if ($state != 'All') {
+      $results = preg_grep($state_pattern, $results);
+    }
+    if ($chamber != 'All') {
+      $results = preg_grep($chamber_pattern, $results);
+    }
+    if (is_array($results)) {
+      $num = count($results);
+      // Limit the displayed results (there are 7,000+ committees)
+      // and create a tally message.
+      $results = array_slice($results, 0, 5);
+      $rest = $num - 5;
+      if ($rest > 0) {
+        $results['message'] = 'Plus ' . $rest . ' more. Try narrowing your search with more letters, words or filters';
+      }
+      else {
+        // Prevent the autocompelte js from bolding the last suggestion.
+        $results['message'] = '';
+      }
+      foreach ($results as $key => $row) {
+        $matches[$row] = $row;
+      }
+    }
+  }
+  drupal_json_output($matches);
+}
+
+
+/**
+ * Implements hook_entity_info().
+ *
+ * We define two entities here - SBA Message Type and SBA Message.
+ * Different Action types will have different message types.
+ */
+function sba_message_entity_info() {
+  $return['sba_message'] = array(
+    'label' => t('SBA Message'),
+    // The entity class and controller class extend the classes provided by the
+    // Entity API.
+    'entity class' => 'SbaMessage',
+    'controller class' => 'SbaMessageController',
+    'base table' => 'sba_message',
+    'fieldable' => TRUE,
+    'entity keys' => array(
+      'id' => 'sba_message_id',
+      'bundle' => 'type',
+    ),
+    // Bundles are defined by the sba_message types below.
+    'bundles' => array(),
+    // Bundle keys tell the FieldAPI how to extract information from
+    // the bundle objects.
+    'bundle keys' => array(
+      'bundle' => 'type',
+    ),
+    'redirect' => FALSE,
+    'label callback' => 'entity_class_label',
+    'uri callback' => 'entity_class_uri',
+    'creation callback' => 'sba_message_create',
+    'access callback' => 'sba_message_access',
+    'module' => 'sba_message',
+    // The information below is used by the SBA MessageUIController
+    // (which extends the EntityDefaultUIController).
+    'admin ui' => array(
+      'path' => 'node/%node/messages',
+      'file' => 'sba_message.admin.inc',
+      'controller class' => 'SbaMessageUIController',
+      'menu wildcard' => '%sba_message',
+    ),
+  );
+
+  // The entity that holds information about the entity types.
+  $return['sba_message_type'] = array(
+    'label' => t('SBA Message Type'),
+    'entity class' => 'SbaMessageType',
+    'controller class' => 'SbaMessageTypeController',
+    'base table' => 'sba_message_type',
+    'fieldable' => FALSE,
+    'bundle of' => 'sba_message',
+    'exportable' => TRUE,
+    'entity keys' => array(
+      'id' => 'id',
+      'name' => 'type',
+      'label' => 'label',
+    ),
+    'module' => 'sba_message',
+  );
+
+  return $return;
+}
+
+/**
+ * Implements hook_entity_info_alter().
+ *
+ * We are adding the info about the sba_message types via a hook
+ * to avoid a recursion issue as loading the sba_message types
+ * requires the entity info as well.
+ *
+ * @TODO items defining admin paths for the message entities will
+ * be removed, eventually.
+ */
+function sba_message_entity_info_alter(&$entity_info) {
+  foreach (sba_message_get_types() as $type => $info) {
+    $entity_info['sba_message']['bundles'][$type] = array(
+      'label' => $info->label,
+    );
+  }
+}
+
+/**
+ * Implements hook_permission().
+ *
+ * @TODO Admin perms are to be removed.
+ */
+function sba_message_permission() {
+  // We set up permissions to manage entity types, manage all entities and the
+  // permissions for each individual entity.
+  $permissions = array(
+    'administer sba messages' => array(
+      'title' => t('Administer sba_messages'),
+      'description' => t('Edit and delete all sba_messages'),
+    ),
+  );
+  return $permissions;
+}
+
+/**
+ * Gets an array of all sba_message types, keyed by the type name.
+ *
+ * @param string $type_name
+ *   If set, the type with the given name is returned.
+ *
+ * @return mixed
+ *   SbaMessageType[] Depending whether $type isset, an array of
+ *   types or a single one.
+ */
+function sba_message_get_types($type_name = NULL) {
+  // Entity_load will get the Entity controller for our sba_message entity
+  // and call the load function of that object - we are loading
+  // entities by name here.
+  $types = entity_load_multiple_by_name('sba_message_type', isset($type_name) ? array($type_name) : FALSE);
+  return isset($type_name) ? reset($types) : $types;
+}
+
+/**
+ * Menu argument loader; Load a sba_message type by string.
+ *
+ * @param string $type
+ *   The machine-readable name of a sba_message type to load.
+ *
+ * @return mixed
+ *   A sba_message type array or FALSE if $type does not exist.
+ */
+function sba_message_type_load($type) {
+  return sba_message_get_types($type);
+}
+
+/**
+ * Fetch a sba_message object.
+ *
+ * @param int $sba_message_id
+ *   Integer specifying the sba_message id.
+ * @param bool $reset
+ *   A boolean indicating that the internal cache should be reset.
+ *
+ * @return mixed
+ *   A fully-loaded $sba_message object or FALSE if it cannot be loaded.
+ *
+ * @see sba_message_load_multiple()
+ */
+function sba_message_load($sba_message_id, $reset = FALSE) {
+  $sba_messages = sba_message_load_multiple(array($sba_message_id), array(), $reset);
+  return reset($sba_messages);
+}
+
+/**
+ * Load multiple sba_messages based on certain conditions.
+ *
+ * @param array $sba_message_ids
+ *   An array of sba_message IDs.
+ * @param array $conditions
+ *   An array of conditions to match against the {sba_message} table.
+ * @param bool $reset
+ *   A boolean indicating that the internal cache should be reset.
+ *
+ * @return array
+ *   An array of sba_message objects, indexed by sba_message_id.
+ *
+ * @see entity_load()
+ * @see sba_message_load()
+ */
+function sba_message_load_multiple($sba_message_ids = array(), $conditions = array(), $reset = FALSE) {
+  return entity_load('sba_message', $sba_message_ids, $conditions, $reset);
+}
+
+
+/**
+ * Deletes a sba_message.
+ *
+ * @param SbaMessage $sba_message
+ *   The message entity.
+ */
+function sba_message_delete(SbaMessage $sba_message) {
+  $sba_message->delete();
+  // Cleanup draggableviews table.
+  db_delete('draggableviews_structure')
+    ->condition('entity_id', $sba_message->sba_message_id)
+    ->execute();
+}
+
+/**
+ * Delete multiple sba_messages.
+ *
+ * @param array $sba_message_ids
+ *   An array of sba_message IDs.
+ */
+function sba_message_delete_multiple(array $sba_message_ids) {
+  entity_get_controller('sba_message')->delete($sba_message_ids);
+}
+
+/**
+ * Create a sba_message object.
+ *
+ * @param array $values
+ *   The properties for the message entity.
+ */
+function sba_message_create($values = array()) {
+  return entity_get_controller('sba_message')->create($values);
+}
+
+/**
+ * Saves a sba_message to the database.
+ *
+ * @param SbaMessage $sba_message
+ *   The sba_message object.
+ */
+function sba_message_save(SbaMessage $sba_message) {
+  return $sba_message->save();
+}
+
+/**
+ * Saves a sba_message type to the db.
+ *
+ * @param SbaMessageType $type
+ *   The message type entity.
+ */
+function sba_message_type_save(SbaMessageType $type) {
+  $type->save();
+}
+
+/**
+ * Deletes a sba_message type from the db.
+ *
+ * @param SbaMessageType $type
+ *   The message type entity.
+ */
+function sba_message_type_delete(SbaMessageType $type) {
+  $type->delete();
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function sba_message_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'sba_message') . '/views',
+  );
+}
+
+/**
+ * Implements hook_theme().
+ */
+function sba_message_theme() {
+  return array(
+    'views_exposed_form' => array(
+      'template' => 'templates/views-exposed-form--targets-block-3',
+      'render element' => 'form',
+    ),
+    'views_view' => array(
+      'template' => 'templates/views-view--targets-block-3',
+      'render element' => 'form',
+    ),
+  );
+}
+
+/**
+ * Implements hook_preprocess_hook().
+ *
+ * Override springboard theme's conversion of button text.
+ */
+function sba_message_preprocess_views_exposed_form(&$vars, $hook) {
+  if (isset($vars['theme_hook_suggestion']) &&  $vars['theme_hook_suggestion'] == 'views_exposed_form__targets__block_3') {
+    unset($vars['form']['submit']['#printed']);
+    $vars['target_button'] = drupal_render($vars['form']['submit']);
+  }
+}
+
+
+/**
+ * The class used for sba_message entities.
+ */
+class SbaMessage extends Entity {
+
+  public $name;
+  public $sba_message_id;
+
+  /**
+   * Constructor.
+   *
+   * @param array $values
+   *   Db column names as entity properties.
+   */
+  public function __construct($values = array()) {
+    parent::__construct($values, 'sba_message');
+  }
+
+  /**
+   * Label callback.
+   *
+   * @return string
+   *   The name of the entity.
+   */
+  protected function defaultLabel() {
+    return $this->name;
+  }
+
+}
+
+
+/**
+ * The class used for sba_message type entities.
+ */
+class SbaMessageType extends Entity {
+
+  /**
+   * Machine name.
+   *
+   * @var
+   */
+  public $type;
+
+  /**
+   * Human readable name.
+   *
+   * @var
+   */
+  public $label;
+
+  /**
+   * Message constructor.
+   *
+   * @param array $values
+   *   The db column names as message properties.
+   */
+  public function __construct($values = array()) {
+    parent::__construct($values, 'sba_message_type');
+  }
+}
+
+/**
+ * The Controller for SBA Message entities.
+ */
+class SbaMessageController extends EntityAPIController {
+  /**
+   * Message controller constructor.
+   *
+   * @param string $entityType
+   *   The machine name.
+   */
+  public function __construct($entityType) {
+    parent::__construct($entityType);
+  }
+
+
+  /**
+   * Create function.
+   *
+   * Create a sba_message - we first set up the values that are specific
+   * to our sba_message schema but then also go through the EntityAPIController
+   * function.
+   *
+   * @param array $values
+   *   Db column names as entity properties.
+   *
+   * @return object
+   *   A sba_message object with all default fields initialized.
+   */
+  public function create(array $values = array()) {
+    // Add values that are specific to our SBA Message.
+    $values += array(
+      'sba_message_id' => '',
+      'is_new' => TRUE,
+      'title' => '',
+      'created' => '',
+      'changed' => '',
+      'data' => '',
+    );
+
+    $sba_message = parent::create($values);
+    return $sba_message;
+  }
+}
+
+
+/**
+ * The Controller for SBA Message entities.
+ */
+class SbaMessageTypeController extends EntityAPIControllerExportable {
+  /**
+   * Type constructor.
+   *
+   * @param string $entityType
+   *   The name of the entity type.
+   */
+  public function __construct($entityType) {
+    parent::__construct($entityType);
+  }
+
+  /**
+   * Create a sba_message type.
+   *
+   * We first set up the values that are specific
+   * to our sba_message type schema but then also go
+   * through the EntityAPIController function.
+   *
+   * @param array $values
+   *   The db column names as entity properties.
+   *
+   * @return object
+   *   A sba_message type object with all default fields initialized.
+   */
+  public function create(array $values = array()) {
+
+    // Add values that are specific to our SBA Message.
+    $values += array(
+      'id' => '',
+      'is_new' => TRUE,
+      'data' => '',
+    );
+    $sba_message_type = parent::create($values);
+    return $sba_message_type;
+  }
+}

@@ -9,6 +9,7 @@
  */
 function fundraiser_install() {
   variable_set('fundraiser_development_mode', 1);
+  variable_set('commerce_default_currency', 'USD');
 }
 
 /**
@@ -457,4 +458,54 @@ function fundraiser_update_7005() {
     'length' => '1024',
     'not null' => FALSE,
   ));
+}
+
+/**
+ * Set the site wide default currency to USD if it is not set.
+ */
+function fundraiser_update_7006() {
+  $t = get_t();
+  $currency = variable_get('commerce_default_currency', NULL);
+  if (is_null($currency)) {
+    variable_set('commerce_default_currency', 'USD');
+    drupal_set_message($t('The site-wide default currency was set to USD.'));
+  }
+  else {
+    drupal_set_message($t('The current site-wide default currency is %currency.', array('%currency' => $currency)));
+  }
+}
+
+/**
+ * Add the currency node field (and internal name field if it's missing).
+ */
+function fundraiser_update_7007() {
+  module_load_include('inc', 'fundraiser', 'includes/fundraiser.fields');
+  $t = get_t();
+  $replacements = array(
+    '%currency' => commerce_default_currency(),
+  );
+
+  // Add the currency field to all fundraiser node types.
+  $types = node_type_get_types();
+  foreach ($types as $type => $type_info) {
+    if (fundraiser_is_donation_type($type)) {
+      _fundraiser_add_default_fields($type);
+      $replacements['%type'] = $type;
+      drupal_set_message($t('The currency field has been added to the %type content type with a defautl value of %currency', $replacements));
+    }
+  }
+}
+
+/**
+ * Uninstall the fundraiser_multi_currency module if it is enabled.
+ */
+function fundraiser_update_7008() {
+  if (module_exists('fundraiser_multi_currency')) {
+    module_disable(array('fundraiser_multi_currency'), FALSE);
+    drupal_uninstall_modules(array('fundraiser_multi_currency'), FALSE);
+  }
+
+  if (db_table_exists('fundraiser_currencies')) {
+    db_drop_table('fundraiser_currencies');
+  }
 }

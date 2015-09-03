@@ -31,14 +31,16 @@ var addthis_share = {
            $(this).addClass('social-processed');
            $(this).click(function() {
                $elem = $(this);
+               // account for subdirectory install
+               $url = Drupal.settings.basePath;
                if ($(this).hasClass('facebook')) {
-                 $url = '/sb_social/share_event/facebook/';
+                 $url += 'sb_social/share_event/facebook/';
                }
                if ($(this).hasClass('twitter')) {
-                 $url = '/sb_social/share_event/twitter/';
+                 $url += 'sb_social/share_event/twitter/';
                }
                if ($(this).hasClass('email')) {
-                 $url = '/sb_social/share_event/email/';
+                 $url += 'sb_social/share_event/email/';
                }
                $url = $url + Drupal.settings.sb_social.id + '/';
                $url = $url + Drupal.settings.sb_social.id_type + '/';

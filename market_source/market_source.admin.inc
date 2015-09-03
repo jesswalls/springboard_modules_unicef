@@ -268,15 +268,15 @@ function market_source_admin_settings_form_validate($form, &$form_state) {
       form_set_error('market_source_global_fields][custom_fields_wrapper][' . $i . '][' . $error_key,
         t('Both the field name and the field key must be provided.'));
     }
-    if (!empty($field['name']) && !preg_match('/^[a-zA-Z0-9_+-\s]+$/', $field['name'])) {
+    if (!empty($field['name']) && !preg_match('/^[a-zA-Z0-9_ ]+$/', $field['name'])) {
       form_set_error('market_source_global_fields][custom_fields_wrapper][' . $i . '][name',
         t('The field name may only contain alphanumeric characters, whitespace and underscores.'));
     }
-    if (!empty($field['key']) && !preg_match('/^[a-zA-Z0-9_+-]+$/', $field['key'])) {
+    if (!empty($field['key']) && !preg_match('/^[a-zA-Z0-9_]+$/', $field['key'])) {
       form_set_error('market_source_global_fields][custom_fields_wrapper][' . $i . '][key',
         t('The field key may only contain alphanumeric characters and underscores.'));
     }
-    if (!empty($field['default']) && !preg_match('|^[a-zA-Z0-9_+-:\\\/\s%\[\]]+$|', $field['default'])) {
+    if (!empty($field['default']) && !preg_match('|^[a-zA-Z0-9_+\-:\\\/\s%\[\]]+$|', $field['default'])) {
       form_set_error('market_source_global_fields][custom_fields_wrapper][' . $i . '][default',
         t('The default value may only contain alphanumeric characters, whitespace, underscores, slashes, square brackets, colon and the percent sign.'));
     }

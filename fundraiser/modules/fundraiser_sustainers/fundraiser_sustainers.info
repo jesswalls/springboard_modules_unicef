@@ -3,11 +3,14 @@ description = Support sustainer behaviors for fundraiser.
 core = 7.x
 package = Jackson River Springboard
 version = 7.x-4.x-dev
+dependencies[] = fundraiser
 dependencies[] = fundraiser_commerce
 dependencies[] = entity
 dependencies[] = rules
 dependencies[] = date
 dependencies[] = views
+dependencies[] = views_bulk_operations
+dependencies[] = commerce
 
 files[] = includes/FundraiserSustainersHealthChecks.php
 files[] = includes/FundraiserSustainerRecordViewsController.php
@@ -24,6 +27,10 @@ files[] = includes/FundraiserSustainersHistoricalReport.php
 files[] = includes/FundraiserSustainersInsights.php
 
 ; Testing files
+files[] = tests/fundraiser_sustainers.setup.test
 files[] = tests/fundraiser_sustainers.test
 files[] = tests/fundraiser_sustainers_health_checks.test
 files[] = tests/fundraiser_sustainers_insights.test
+files[] = tests/fundraiser_sustainers_auto_cancel.test
+files[] = tests/fundraiser_sustainers_processing_exception_handling.test
+files[] = tests/fundraiser_sustainers_delayed_creation.test

@@ -1,0 +1,7 @@
+name = Springboard Taxonomy
+description = Creates an organization issues vocabulary and field.
+package = Jackson River Springboard - extras
+core = 7.x
+configure = 'admin/config/content/springboard-taxonomy'
+
+dependencies[] = taxonomy

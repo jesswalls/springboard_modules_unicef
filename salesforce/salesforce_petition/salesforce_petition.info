@@ -1,0 +1,11 @@
+name = Salesforce Petition
+description = Salesforce integration support for petition functionality.
+package = Salesforce
+core = 7.x
+version = 7.x-4.x-dev
+
+dependencies[] = libraries
+dependencies[] = salesforce
+dependencies[] = salesforce_soap
+dependencies[] = salesforce_sync
+dependencies[] = springboard_petition

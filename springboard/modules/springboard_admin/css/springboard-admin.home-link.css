@@ -1,0 +1,20 @@
+#springboard-admin-home-link {
+  position: fixed;
+  top: 0;
+  right: 0px;
+  width: 140px;
+  height: 32px;
+}
+#springboard-admin-home-link-wrapper {
+  overflow: hidden;
+}
+#springboard-admin-home-link a {
+  display: block;
+  width: 140px;
+  height: 32px;
+  background: url('../images/springboard-admin-link-sprite.png') no-repeat right -3px;
+  text-indent: -9999px;
+}
+#springboard-admin-home-link a:hover {
+  background-position: right -44px;
+}

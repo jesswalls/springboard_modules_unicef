@@ -6,8 +6,8 @@
 
 /**
  * Implements hook_salesforce_mapping_map_fields_alter().
- * 
- * Replace Drupal objects either with IDs or with tokens for associated objects in exported 
+ *
+ * Replace Drupal objects either with IDs or with tokens for associated objects in exported
  * social share items, depending on what should be mapped to the SF field.
  */
 function sb_social_salesforce_mapping_map_fields_alter(&$fields, $context) {
@@ -42,7 +42,7 @@ function sb_social_salesforce_mapping_map_fields_alter(&$fields, $context) {
           $submission = $wrapper->submission->value();
           if ('reference' == $field_mapping['salesforce_field']['type']) {
             if ($submission && _sb_social_webform_maps_to_action($submission->nid)) {
-              $fields[$sf_name] = sprintf('[Actions__c:%d:%d]', $submission->nid, $submission->sid);
+              $fields[$sf_name] = sprintf('[sb_Actions_Taken__c:%d:%d]', $submission->nid, $submission->sid);
             } else {
               // If we can't give a token, give nothing. A number won't sync to a reference field.
               $fields[$sf_name] = NULL;
@@ -84,15 +84,15 @@ function sb_social_salesforce_mapping_map_fields_alter(&$fields, $context) {
 /**
  * Implements hook_salesforce_genmap_map_fields_alter().
  *
- * If a donation or other Webform submission was created by a user who came to the site 
+ * If a donation or other Webform submission was created by a user who came to the site
  * from a share URL (e.g., social_referer_transaction market source field was set) we want
  * to try to link the new donation/submission to the "referer transaction" -- that is, the
  * social share that produced this new user action.
- * 
+ *
  * The "social_referer_transaction" value will be populated already by market_source,
  * giving the numeric share_id. To sync the relationship to Salesforce, we replace the
  * share_id value with a token so the sync engine can look up the Social_Share__c object's
- * SFID. 
+ * SFID.
  */
 function sb_social_salesforce_genmap_map_fields_alter(&$fields, $context) {
   // Is this a webform-based mapping (donation, petition, etc.)?
@@ -264,7 +264,7 @@ function sb_social_format_sf_date($time) {
 }
 
 /**
- * Utility function: Query genmap whether a Webform has a map to the Actions__c object.
+ * Utility function: Query genmap whether a Webform has a map to the sb_Actions_Taken__c object.
  */
 function _sb_social_webform_maps_to_action($nid) {
   static $result = array();
@@ -274,10 +274,10 @@ function _sb_social_webform_maps_to_action($nid) {
   }
   // For performance, query the genmap mappings table directly, then cache.
   if (!isset($results[$nid])) {
-    // We are specifically interested in whether this webform maps to Actions__c, irrespective of
+    // We are specifically interested in whether this webform maps to sb_Actions_Taken__c, irrespective of
     // what module is the map's handler.
     $results[$nid] = (bool) db_query(
-      "SELECT mid FROM {salesforce_genmap_map} WHERE salesforce_object_type='Actions__c' AND nid=:nid;",
+      "SELECT mid FROM {salesforce_genmap_map} WHERE salesforce_object_type='sb_Actions_Taken__c' AND nid=:nid;",
       array(':nid' => $nid)
     )->fetchField();
   }

@@ -366,6 +366,9 @@ function fundraiser_date_mode_load_original_dates($master_did) {
 function _fundraiser_date_mode_revert_sustainer_dates($master_order, $series_orders) {
   $original_dates = fundraiser_date_mode_load_original_dates($master_order['master_did']);
   $orders_to_revert = _fundraiser_date_mode_orders_to_change($series_orders);
+  if (empty($orders_to_revert)) {
+    return;
+  }
 
   foreach ($orders_to_revert as $did) {
     if (isset($original_dates[$did]['original_next_charge'])) {
@@ -394,6 +397,7 @@ function fundraiser_date_mode_get_sustainer_series_data() {
       next_charge ASC"
   );
 
+  // Pull the data for each sustainer series.
   while ($master_did = $query->fetchField()) {
 
     $results = db_query('
@@ -403,17 +407,25 @@ function fundraiser_date_mode_get_sustainer_series_data() {
         master_did = :master_did
     ', array(':master_did' => $master_did));
 
+    // Initiate an array with the master and series sustainer objects.
+    $data[$master_did] = array(
+      'master_order' => NULL,
+      'series' => array()
+    );
+
+    // Loop through the results and populate the array.
     while ($row = $results->fetchAssoc()) {
       if ($row['master_did'] == $row['did']) {
-        $data[$row['master_did']]['master_order'] = $row;
+        $data[$master_did]['master_order'] = $row;
       }
       else {
         if ($row['next_charge'] > time() && empty($row['gateway_resp'])) {
-          $data[$row['master_did']]['series'][] = $row;
+          $data[$master_did]['series'][] = $row;
         }
       }
     }
   }
+
   return $data;
 }
 
@@ -520,7 +532,8 @@ function fundraiser_date_mode_update_date_mode_operation($op, $date, $time, $mas
     default:
       return;
   }
-  // TODO: requeue objects for resync to SF.
+
+  // Requeue objects for resync to SF.
   if (count($series_orders)) {
     _fundraiser_date_mode_requeue_sustainers($series_orders);
   }
@@ -592,7 +605,14 @@ function fundraiser_date_mode_process_queue_item($item) {
       'successes' => 0,
       'fails' => 0,
     );
-    fundraiser_sustainers_process_single_recurring_donation($log, $recurring, $sustainer_key);
+
+    try {
+      fundraiser_sustainers_process_single_recurring_donation($log, $recurring, $sustainer_key);
+    }
+    catch (Exception $e) {
+      fundraiser_sustainers_processing_exception($e, $recurring);
+    }
+
     // If we get to here the transaction has been completed.
     watchdog('fundraiser_sustainers_date_mode', 'Sustainer order id !did has finished processing.', array('!did' => $recurring->did), WATCHDOG_NOTICE);
   }
@@ -608,7 +628,7 @@ function fundraiser_date_mode_process_queue_item($item) {
 function _fundraiser_date_mode_requeue_sustainers($series_orders) {
   if (module_exists('salesforce_genmap') && is_array($series_orders) && count($series_orders)) {
     foreach ($series_orders as $sustainer) {
-      $donation = fundraiser_donation_get_donation($sustainer->did, TRUE);
+      $donation = fundraiser_donation_get_donation($sustainer['did'], TRUE);
       salesforce_genmap_send_object_to_queue('fundraiser_sustainers', 'update',
       $donation->node, $donation->did, $donation, 'recurring_donation');
     }

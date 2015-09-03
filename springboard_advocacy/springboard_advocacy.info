@@ -2,4 +2,21 @@ name = Springboard Advocacy
 description = Main controller feature for Springboard Advocacy
 core = 7.x
 package = Springboard Advocacy
-features[features_api][] = api:2
+dependencies[] = libraries
+dependencies[] = views
+
+configure = 'admin/config/services/advocacy'
+
+files[] = includes/springboard_advocacy.ApiClientLoader.inc
+files[] = includes/springboard_advocacy.ApiCall.inc
+files[] = includes/views/springboard_advocacy.views.inc
+files[] = includes/views/springboard_advocacy.views_default.inc
+files[] = includes/views/plugins/springboard_advocacy_views_plugin_query.inc
+files[] = includes/views/plugins/springboard_advocacy_views_plugin_pager.inc
+files[] = includes/views/handlers/springboard_advocacy_views_handler_field.inc
+files[] = includes/views/handlers/springboard_advocacy_views_handler_field_target_actions.inc
+files[] = includes/views/handlers/springboard_advocacy_views_handler_field_group_actions.inc
+files[] = includes/views/handlers/springboard_advocacy_views_handler_filter_string.inc
+files[] = includes/views/handlers/springboard_advocacy_views_handler_filter_combine.inc
+files[] = includes/views/handlers/springboard_advocacy_views_handler_filter_search_types.inc
+files[] = includes/views/plugins/springboard_advocacy_views_plugin_cache_time.inc

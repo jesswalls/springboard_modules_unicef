@@ -40,7 +40,7 @@ function springboard_views_requirements($phase) {
     ctools_include('export');
     $views = array(
       'sbv_notes',
-      'sbv_administrators',
+      'sbv_administrator_users',
       'sbv_forms',
       'sbv_donations',
       'sbv_page_wrappers',
