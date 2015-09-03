@@ -1,0 +1,8 @@
+name = Springboard Advocacy Quick Sign
+description = Sign petitions and actions with only an email address.
+core = 7.x
+package = Springboard Advocacy
+dependencies[] = webform_user
+dependencies[] = springboard_advocacy
+
+files[] = tests/sba_quicksign.test

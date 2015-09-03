@@ -9,16 +9,16 @@
  *
  * The api is expecting an array structured like so:
  *
-    array(
-    'name' => 'group name', //required
-    'chambers' => array(
-      0 => array('chamber' => 'fs', 'party =>'r', state => 'MA'),
-      1 => array('chamber' => 'fs', 'party =>'d', state => 'MA')
-      2 => array('chamber' => 'PRES01', 'party =>'r'),
-      3 => array('chamber' => 'PRES03', 'party =>'d')
-    )
-    'target_ids' => array('1', '2', '3', '4', '5', '6', '7'),
-    )
+array(
+  'name' => 'group name', //required
+  'chambers' => array(
+    0 => array('chamber' => 'fs', 'party =>'r', state => 'MA'),
+    1 => array('chamber' => 'fs', 'party =>'d', state => 'MA')
+    2 => array('chamber' => 'PRES01', 'party =>'r'),
+    3 => array('chamber' => 'PRES03', 'party =>'d')
+  )
+  'target_ids' => array('1', '2', '3', '4', '5', '6', '7'),
+)
  */
 function _sba_message_api_save($sba_message, $is_new, $form_state) {
   $values = $form_state['values'];
@@ -29,21 +29,18 @@ function _sba_message_api_save($sba_message, $is_new, $form_state) {
   $chamber_rows = array();
   $unstructured_chambers = array();
 
-  $loader = new AdvocacyApiClientLoader();
-  $client = $loader->getClient();
-
-  if(!empty($values['data']['recipients'])) {
+  if (!empty($values['data']['recipients'])) {
 
     $targets = json_decode($values['data']['recipients']);
     foreach ($targets as $target) {
       if (isset($target->id)) {
         $indvds[$target->id] = $target->id;
       }
-      elseif(isset($target->ids)) {
+      elseif (isset($target->ids)) {
         $multi_indvds =  array_merge($multi_indvds, explode('|', $target->ids));
       }
-      elseif(isset($target->gender) || isset($target->social)) {
-        $has_gender_or_social[] =  $target;
+      elseif (isset($target->gender) || isset($target->social)) {
+        $has_gender_or_social[] = $target;
       }
       else {
         $unstructured_chambers[] = $target;
@@ -61,12 +58,16 @@ function _sba_message_api_save($sba_message, $is_new, $form_state) {
 
   $combined = array_merge($multi_indvds, $indvds, $gender_or_social_rows);
   $indvds = !empty($combined) ? json_encode($combined) : '';
+
+  $api_call = new AdvocacyApiCall();
+
   // Is this a new message? Then create a new target group for it.
   if ($is_new) {
-    $response = _sba_message_api_create_group($client, $sba_message, $chamber_rows, $indvds, $values);
+    $response = _sba_message_api_create_group($api_call, $sba_message, $chamber_rows, $indvds, $values);
     if (!empty($response->data->id)) {
       _sba_message_api_valid_response($sba_message, $response);
-    } else {
+    }
+    else {
       _sba_message_api_invalid_response($sba_message);
     }
   }
@@ -74,50 +75,45 @@ function _sba_message_api_save($sba_message, $is_new, $form_state) {
     // Perhaps during group creation the response was interrupted
     // or the group creaton failed
     if ($sba_message->data['group_id'] == 'no_response') {
-      $response = _sba_message_api_get_group_by_message_id($client, $sba_message->data['message_id']);
+      $response = _sba_message_api_get_group_by_message_id($api_call, $sba_message->data['message_id']);
       if (!empty($response) && !empty($response->data->id)) {
         $sba_message->data['group_id'] = $response->data->id;
         $sba_message->changed = time();
         $sba_message->save();
-        $update = _sba_message_api_update_group($client, $sba_message, $chamber_rows, $indvds, $values);
-      } else {
-        $update = _sba_message_api_create_group($client, $sba_message, $chamber_rows, $indvds, $values);
+        $update = _sba_message_api_update_group($api_call, $sba_message, $chamber_rows, $indvds, $values);
+      }
+      else {
+        $update = _sba_message_api_create_group($api_call, $sba_message, $chamber_rows, $indvds, $values);
       }
     }
     // everything was OK.
     else {
-      $update = _sba_message_api_update_group($client, $sba_message, $chamber_rows, $indvds, $values);
+      $update = _sba_message_api_update_group($api_call, $sba_message, $chamber_rows, $indvds, $values);
     }
     if (!empty($update->data->id)) {
       _sba_message_api_valid_response($sba_message, $update);
-    } else {
+    }
+    else {
       _sba_message_api_invalid_response($sba_message);
     }
   }
 }
 
+/**
+ * @param $target_fields
+ * @return array
+ */
 function _sba_message_api_get_gender_or_social_ids($target_fields) {
-  $loader = new AdvocacyApiClientLoader();
-  $client = $loader->getClient();
+
+  $api_call = new AdvocacyApiCall();
+
   $ids = array();
-  $message = FALSE;
   foreach ($target_fields as $fields) {
     $fields->limit = 1;
-    $response = $client->searchTargets((array)$fields);
-    if($client->isDebugMode()) {
-      watchdog('advocacy', 'Advocacy API Call details: !message', array('!message' => '<pre>' . check_plain(print_r($client->getDebugInfo(), TRUE)) . '</pre>'), WATCHDOG_DEBUG);
-    }
+    $response = $api_call->invokeClientMethod('searchTargets', (array) $fields);
+
     if (!empty($response->data->ids)) {
       $ids = array_unique(array_merge($ids, $response->data->ids));
-    }
-    elseif(!isset($response->data)) {
-      if (isset($response->error)) {
-        drupal_set_message(t('An error occurred when attempting create targets: @message', array('@message' => $response->error->message)), 'error');
-        watchdog('advocacy', 'An error occurred when attempting to create targets: @message', array('@message' => $response->error->message), WATCHDOG_ERROR);
-      } else {
-        drupal_set_message(t('A response was not received from the server when attempting to create targets.'), 'error');
-        watchdog('advocacy', 'A response was not received when attempting to create targets.', array(), WATCHDOG_ERROR);
-      }
     }
   }
   return $ids;
@@ -229,56 +225,50 @@ function _sba_message_api_build_chambers_shmoosher(&$chamber_rows_container, $ch
 
 /**
  * Create a target group and targets on the API server.
- * @param $client
+ * @param $api_call
  * @param $sba_message
  * @param $chamber_rows
  * @param $indvds
  * @param $values
  * @return mixed
  */
-function _sba_message_api_create_group($client, $sba_message, $chamber_rows, $indvds, $values) {
-  $response =
-    $client->createTargetGroup(
-      array(
-        'name' => $sba_message->name,
-        'chambers' => $chamber_rows,
-        'target_ids' => $indvds,
-        'message' => array(
-          'message_id' => $values['data']['message_id'],
-          'form_id' => $values['advocacy_id'],
-        ),
-      )
-    );
-  if($client->isDebugMode()) {
-    watchdog('advocacy', 'Advocacy API Call details: !message', array('!message' => '<pre>' . check_plain(print_r($client->getDebugInfo(), TRUE)) . '</pre>'), WATCHDOG_DEBUG);
-  }
+function _sba_message_api_create_group($api_call, $sba_message, $chamber_rows, $indvds, $values) {
+  $response = $api_call->invokeClientMethod('createTargetGroup',
+    array(
+      'name' => $sba_message->name,
+      'chambers' => $chamber_rows,
+      'target_ids' => $indvds,
+      'message' => array(
+        'message_id' => $values['data']['message_id'],
+        'form_id' => $values['advocacy_id'],
+      ),
+    )
+  );
+
   return $response;
 }
 
 /**
  * Update existing message group on the API server
- * @param $client
+ * @param $api_call
  * @param $sba_message
  * @param $chamber_rows
  * @param $indvds
  * @param $values
  * @return mixed
  */
-function _sba_message_api_update_group($client, $sba_message, $chamber_rows, $indvds, $values) {
-  $response =
-    $client->updateTargetGroup(
-      array(
-        'name' => $sba_message->name,
-        'chambers' => $chamber_rows,
-        'target_ids' => $indvds,
-        'message' => array(
-          'message_id' => $values['data']['message_id'],
-          'form_id' => $values['advocacy_id'],
-        ),
-      ), $sba_message->data['group_id']);
-  if($client->isDebugMode()) {
-    watchdog('advocacy', 'Advocacy API Call details: !message', array('!message' => '<pre>' . check_plain(print_r($client->getDebugInfo(), TRUE)) . '</pre>'), WATCHDOG_DEBUG);
-  }
+function _sba_message_api_update_group($api_call, $sba_message, $chamber_rows, $indvds, $values) {
+  $response = $api_call->invokeClientMethod('updateTargetGroup',
+    array(
+      'name' => $sba_message->name,
+      'chambers' => $chamber_rows,
+      'target_ids' => $indvds,
+      'message' => array(
+        'message_id' => $values['data']['message_id'],
+        'form_id' => $values['advocacy_id'],
+      ),
+    ), $sba_message->data['group_id']);
+
   return $response;
 }
 
@@ -287,15 +277,12 @@ function _sba_message_api_update_group($client, $sba_message, $chamber_rows, $in
  * try to retrieve it via the message id. This would happen if the
  * group creation fails or if the creation response was interrupted.
  *
- * @param $client
+ * @param $api_call
  * @param $message_id
  * @return mixed
  */
-function _sba_message_api_get_group_by_message_id($client, $message_id) {
-  $response = $client->getTargetGroupByMessageID($message_id);
-  if($client->isDebugMode()) {
-    watchdog('advocacy', 'Advocacy API Call details: !message', array('!message' => '<pre>' . check_plain(print_r($client->getDebugInfo(), TRUE)) . '</pre>'), WATCHDOG_DEBUG);
-  }
+function _sba_message_api_get_group_by_message_id($api_call, $message_id) {
+  $response = $api_call->invokeClientMethod('getTargetGroupByMessageID', $message_id);
   return $response;
 }
 
@@ -323,28 +310,16 @@ function _sba_message_api_valid_response($sba_message, $response) {
 }
 
 
+/**
+ * @param $sba_message
+ */
 function _sba_message_api_delete_target_group ($sba_message) {
   //delete the remote API message group.
-  $loader = new AdvocacyApiClientLoader();
-  $client = $loader->getClient();
-  $response = $client->deleteTargetGroup($sba_message->data['group_id']);
-  if($client->isDebugMode()) {
-    watchdog('advocacy', 'Advocacy API Call details: !message', array('!message' => '<pre>' . check_plain(print_r($client->getDebugInfo(), TRUE)) . '</pre>'), WATCHDOG_DEBUG);
-  }
+
+  $api_call = new AdvocacyApiCall();
+  $response = $api_call->invokeClientMethod('deleteTargetGroup', $sba_message->data['group_id']);
+
   if (isset($response->data)) {
-    drupal_set_message(t('The message\'s remote target group was deleted.'));
-  } else {
-    if (user_access('administer springboard advocacy')) {
-      if (isset($response->error)) {
-        $message = isset($response->error->message) ? $response->error->message : $response->error;
-        drupal_set_message(t('An error occurred when attempting to delete the message\'s target group: @message:', array('@message' => $message)), 'error');
-        watchdog('advocacy', 'An error occurred when attempting to delete the message\'s target group @id: @message:', array('@id' => $sba_message->data['group_id'], '@message' => $response->error->message), WATCHDOG_ERROR);
-
-      } else {
-        drupal_set_message(t('A response was not received from the API server when attempting to delete the message\'s target group.'), 'error');
-        watchdog('advocacy', 'A response was not received from the API server when attempting to delete the message\'s target group: @id', array('@id' => $sba_message->data['group_id']), WATCHDOG_ERROR);
-
-      }
-    }
+    drupal_set_message(t("The message's remote target group was deleted."));
   }
 }

@@ -584,6 +584,7 @@ function salesforce_mapping_map_entity($entity, $entity_type, $map) {
   $entity_wrapper = entity_metadata_wrapper($entity_type, $entity);
   $fields = array();
   $sync_rules = array();
+  $field_info = field_info_field_map();
   foreach ($map->field_mappings as $field_map) {
     // Skip fields that aren't being pushed to Salesforce.
     if (!in_array($field_map['direction'], array(SALESFORCE_MAPPING_DIRECTION_DRUPAL_SF, SALESFORCE_MAPPING_DIRECTION_SYNC))) {
@@ -593,11 +594,20 @@ function salesforce_mapping_map_entity($entity, $entity_type, $map) {
     $sf_field = $field_map['salesforce_field']['name'];
 
     $fieldmap_type = salesforce_mapping_get_fieldmap_types($drupal_field_type);
-    $value = call_user_func($fieldmap_type['push_value_callback'], $field_map, $entity_wrapper);
+
+    // Check if it's a taxonomy field and use alternate push value function if so.
+    $drupal_field = $field_map['drupal_field']['fieldmap_value'];
+    if (!empty($field_info[$drupal_field]['type']) && $field_info[$drupal_field]['type'] == 'taxonomy_term_reference') {
+      $value =  _salesforce_mapping_taxonomy_field_push_value($field_map, $entity_wrapper);
+    }
+    else {
+      $value = call_user_func($fieldmap_type['push_value_callback'], $field_map, $entity_wrapper);
+    }
+
     $fields[$sf_field] = $value;
     $sync_rules[$sf_field] = isset($field_map['drupal_sf']) ? $field_map['drupal_sf'] : SALESFORCE_SYNC_RULE_ALWAYS;
   }
-  
+
   // Give other modules a crack at the mapped values.
   $context = array(
     'object' => $entity,
@@ -620,6 +630,48 @@ function salesforce_mapping_map_entity($entity, $entity_type, $map) {
     'sobject' => $sobject,
     'sync_rules' => $sync_rules,
   );
+}
+
+/**
+ * Override salesforce_mapping_property_fieldmap_push_value
+ *
+ * If taxonomy field has been loaded as a property instead of as related entity
+ * determine the push value.
+ *
+ * @param $fieldmap
+ * @param $entity_wrapper
+ * @return string
+ * @throws \EntityMetadataWrapperException
+ */
+function _salesforce_mapping_taxonomy_field_push_value($fieldmap, $entity_wrapper) {
+  $drupal_fields_array = explode(':', $fieldmap['drupal_field']['fieldmap_value']);
+  $parent = $entity_wrapper;
+
+  foreach ($drupal_fields_array as $drupal_field) {
+    if ($parent instanceof EntityListWrapper) {
+      $child_wrapper = $parent->get(0)->{$drupal_field};
+    }
+    else {
+      $child_wrapper = $parent->{$drupal_field};
+    }
+    $parent = $child_wrapper;
+  }
+
+  $terms = array();
+  $values = array();
+
+  try {
+    $terms = $child_wrapper->value();
+  }
+  catch (EntityMetadataWrapperException $e) {
+  }
+
+  foreach ($terms as $value) {
+    $values[] = $value->name;
+  }
+  $value = implode(SALESFORCE_MAPPING_ARRAY_DELIMITER, $values);
+
+  return $value;
 }
 
 /**
@@ -744,6 +796,16 @@ function _salesforce_mapping_alter_get_default_value($field, &$form_state, $delt
  */
 function _salesforce_mapping_get_entity_fields($entity_type, $entity_bundle_type = FALSE) {
   $entity_fields = salesforce_mapping_property_fieldmap_options($entity_type, $entity_bundle_type);
+
+  // Grab organization issues and legislative issues vocabs and treat
+  // them as node properties instead of as related entities.
+  $related_entity_fields = salesforce_mapping_property_fieldmap_options($entity_type, $entity_bundle_type, TRUE);
+  $field_info = field_info_field_map();
+  foreach ($related_entity_fields as $field_name => $field_title) {
+    if (!empty($field_info[$field_name]['type']) && $field_info[$field_name]['type'] == 'taxonomy_term_reference') {
+      $entity_fields[$field_name] = $related_entity_fields[$field_name];
+    }
+  }
 
   // Remove - Select - option.
   unset($entity_fields['']);
@@ -948,10 +1010,10 @@ function _salesforce_mapping_datatype_can_sync($entity_type, $drupal_field, $sal
   // given direction and Salesforce datatype, or is assumed to be compatible if
   // there is not a rule or when the ruleset is empty.
   if (
-       !isset($verify_array[$direction][$salesforce_datatype])
-        || empty($verify_array[$direction][$salesforce_datatype])
-        || in_array($drupal_datatype, $verify_array[$direction][$salesforce_datatype])
-     ) {
+    !isset($verify_array[$direction][$salesforce_datatype])
+    || empty($verify_array[$direction][$salesforce_datatype])
+    || in_array($drupal_datatype, $verify_array[$direction][$salesforce_datatype])
+  ) {
     // These two datatypes can sync.  Now see if the the sync rule is compatible
     // with this set.
     $sync_restrictions = array(

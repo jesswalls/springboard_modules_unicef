@@ -58,6 +58,8 @@ function salesforce_message_action_create_actions_taken_fieldmap() {
       'search_engine' => 'Search_Engine__c',
       'search_string' => 'Search_String__c',
       'user_agent' => 'User_Agent__c',
+      'sba_deliverable_count' => 'Generated_Message_Count__c',
+      'sba_user_edit_flag' => 'Message_Edited__c',
     ),
     'salesforce_node_map' => array(
       'title' => 'Name',
@@ -496,4 +498,35 @@ function salesforce_message_action_update_7001() {
     ))
     ->condition('module', 'sba_message_action')
     ->execute();
+}
+
+/**
+ * Maps 2 new message action fields introduced in 4.8.
+ */
+function salesforce_message_action_update_7002() {
+  $result = db_query('SELECT mid, field_map FROM {salesforce_genmap_map} WHERE module = :module', array(':module' => 'salesforce_message_action'));
+
+  foreach ($result as $record) {
+    $map_need_updating = FALSE;
+    $map = unserialize($record->field_map);
+    if (!array_key_exists('sba_deliverable_count', $map['webform_map'])) {
+      $map['webform_map']['sba_deliverable_count'] = 'Generated_Message_Count__c';
+      $map_need_updating = TRUE;
+    }
+
+    if (!array_key_exists('sba_user_edit_flag', $map['webform_map'])) {
+      $map['webform_map']['sba_user_edit_flag'] = 'Message_Edited__c';
+      $map_need_updating = TRUE;
+    }
+
+    // Only perform the update if the fields weren't already mapped manually.
+    if ($map_need_updating) {
+      db_update('salesforce_genmap_map')
+        ->fields(array(
+          'field_map' => serialize($map),
+        ))
+        ->condition('mid', $record->mid)
+        ->execute();
+    }
+  }
 }

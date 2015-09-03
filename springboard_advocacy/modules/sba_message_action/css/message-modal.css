@@ -1,6 +1,6 @@
 div.ctools-modal-content {
     border-radius: 4px;
-    background: none repeat scroll 0% 0% #FFF;
+    background: none repeat scroll 0 0 #FFF;
     color: #000;
     padding: 6px;
     margin: 2px;
@@ -10,8 +10,7 @@ div.ctools-modal-content {
 div.ctools-modal-content .modal-header {
     background: #369;
     border-radius: 4px;
-    padding:6px;
-    padding-left:12px;
+    padding:6px 6px 6px 12px;
 }
 div.ctools-modal-content .modal-title {
     color: #fff;
@@ -20,7 +19,6 @@ div.ctools-modal-content .modal-title {
 }
 div.ctools-modal-content a.close {
     opacity: .8;
-    font-size: 12px;
     font-size: 14px;
     line-height: 14px;
     font-weight: normal;

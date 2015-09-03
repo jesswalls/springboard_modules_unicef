@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  * Springboard Advocacy installation functions.
@@ -9,6 +8,9 @@
  * Implements hook_requirements().
  *
  * Make sure the Advocacy API php-sdk exists
+ *
+ * @param $phase
+ * @return mixed
  */
 function springboard_advocacy_requirements($phase) {
   $t = get_t();
@@ -68,271 +70,6 @@ function springboard_advocacy_schema() {
     return $schema;
 }
 
-/**
- * Implements hook_install().
- */
-function springboard_advocacy_install() {
-  _springboard_advocacy_install_vocab_sba_organization_issues();
-  _springboard_advocacy_install_vocab_sba_legislative_issues();
-  _springboard_advocacy_install_taxonomy_fields();
-}
-
-function _springboard_advocacy_install_vocab_sba_organization_issues() {
-  $already_exists = FALSE;
-  foreach (taxonomy_get_vocabularies() as $vocab) {
-    if ($vocab->machine_name == 'sba_organization_issues') {
-      $already_exists = TRUE;
-      break;
-    }
-  }
-  if (!$already_exists) {
-    $t = get_t();
-    taxonomy_vocabulary_save((object) array(
-      'name' => t("Organization Issues"),
-      'machine_name' => 'sba_organization_issues',
-      'description' => $t("Your organization's issues, which can be used to auto-generate feeds and lists of related actions for your action center and other areas."),
-    ));
-  }
-}
-
-function _springboard_advocacy_install_vocab_sba_legislative_issues() {
-  $already_exists = FALSE;
-  foreach (taxonomy_get_vocabularies() as $vocab) {
-    if ($vocab->machine_name == 'sba_legislative_issues') {
-      $already_exists = TRUE;
-      break;
-    }
-  }
-  if (!$already_exists) {
-    $t = get_t();
-    $status = taxonomy_vocabulary_save((object) array(
-      'name' => t("Legislative Issues"),
-      'machine_name' => 'sba_legislative_issues',
-      'description' => $t("Search terms for selection of matching topics on legislative contact forms."),
-    ));
-    if ($status == SAVED_NEW) {
-      $vocab = taxonomy_vocabulary_machine_name_load('sba_legislative_issues');
-      // Populate with Springboard standard terms.
-      $weight = 0;
-      foreach (_springboard_advocacy_standard_legislative_issues() as $parent => $children) {
-        taxonomy_term_save((object) array(
-          'vid' => $vocab->vid,
-          'name' => $t($parent),
-          'weight' => $weight++,
-          'vocabulary_machine_name' => $vocab->machine_name,
-        ));
-        $parent_terms = taxonomy_term_load_multiple(array(), array('name' => $t($parent), 'vid' => $vocab->vid));
-        if (!empty($parent_terms)) {
-          $parent_term = reset($parent_terms);
-          foreach ($children as $child) {
-            taxonomy_term_save((object) array(
-              'vid' => $vocab->vid,
-              'name' => $t($child),
-              'weight' => $weight++,
-              'parent' => array($parent_term->tid),
-              'vocabulary_machine_name' => $vocab->machine_name,
-            ));
-          }
-        }
-      }
-    }
-  }
-}
-
-function _springboard_advocacy_standard_legislative_issues() {
-  $t = get_t();
-  return array(
-    "Agriculture and Food" => array("Agriculture", "FDA/USDA", "Food", "Nutrition"),
-    "Animal Welfare" => array("Animals", "Animal Rights", "Animal Welfare"),
-    "The Arts" => array("Arts", "Humanities", "Entertainment", "Culture"),
-    "Banking and Finance" => array("Finance", "Banking", "Financial Sector", "Securities"),
-    "Budget and Taxes" => array("Budget", "Appropriations", "Spending", "Ways and Means", "Budget Deficit", "Taxes", "Tax Policy", "Tax Reform"),
-    "Civil Rights and Social Issues" => array("Social Issues", "Civil Rights", "Minority Rights", "Human Rights", "Civil Liberty"),
-    "Consumer Affairs" => array("Consumer Affairs", "Consumer", "Consumer Protections"),
-    "Crime" => array("Crime", "Law Enforcement", "Illegal", "Guns and Crime"),
-    "Defense and National Security" => array("Homeland Security", "Military", "Defense", "Armed Forces", "National Security", "War"),
-    "Education" => array("Education", "Schools", "K-12", "Social Sciences and History", "Colleges and Universities"),
-    "Energy and Environment" => array("Energy", "Natural Resources", "Environment", "Interior/Public Lands", "Climate"),
-    "Government Reform" => array("Government Reform", "Campaign Finance", "Ethics", "Elections", "Politics"),
-    "Government Services & Affairs" => array("Government Issues", "Government Service", "Operations", "Government Affairs", "Federal Issues", "Process"),
-    "Gun Control" => array("Guns", "Gun Control", "Second Amendment", "2nd Amendment", "Weapons"),
-    "Health and Health Care" => array("Health", "Health Care", "Health Insurance"),
-    "Immigration" => array("Immigration", "Border Security", "Borders"),
-    "International Affairs" => array("International Relations", "Foreign Relations", "Foreign Affairs", "Foreign Policy", "International Affairs", "International"),
-    "Jobs and the Economy" => array("Labor", "Jobs", "Employment", "Economy", "Workforce"),
-    "Judiciary" => array("Judiciary", "Judicial", "Constitutional Issues", "Justice", "Law"),
-    "Native Americans" => array("Native Americans", "Indian Affairs", "BIA"),
-    "Other" => array("Other", "General", "Miscellaneous", "Not Listed"),
-    "Science, Technology and Communications" => array("Technology", "Science", "NASA", "Telecommunications"),
-    "Senior Citizens" => array("Senior Citizens", "Pensions", "Retirement", "Aging"),
-    "Social Security, Medicare, and Medicaid" => array("Social Security", "Medicare", "Medicaid", "Disability"),
-    "Social Services" => array("Welfare", "Social Services", "Welfare Issues", "Welfare Reform", "Housing and Urban Development"),
-    "Trade and Commerce" => array("Trade", "Commerce", "Taxes and Trade", "Business", "Economic Development"),
-    "Transportation and Infrastructure" => array("Transportation", "Public Works", "Infrastructure"),
-    "Veterans" => array("Veterans", "Veteran Affairs", "Tricare", "Armed Services"),
-    "Women, Children, and Family" => array("Women's", "Abortion", "Children", "Family", "Reproductive"),
-  );
-}
-
-
-function _springboard_advocacy_install_taxonomy_fields() {
-  module_load_include('inc', 'field', 'field.crud');
-  module_load_include('inc', 'field', 'field.info');
-
-  foreach (_springboard_advocacy_install_taxonomy_field_definitions() as $field_name => $field) {
-    // If the field doesn't exist create it.
-    if (!field_info_field('field_' . $field_name)) {
-      field_create_field($field['field_config']);
-    }
-  }
-}
-
-function _springboard_advocacy_install_taxonomy_field_definitions() {
-  $t = get_t();
-
-  // Organization issues.
-  $fields['sba_organization_issues'] = array(
-    'field_config' => array(
-      'field_name' => 'field_sba_organization_issues',
-      'type' => 'taxonomy_term_reference',
-      'translatable' => '0',
-      'cardinality' => '-1',
-      'settings' => array(
-        'allowed_values' => array(
-          0 => array(
-            'vocabulary' => 'sba_legislative_issues',
-            'parent' => '0',
-          ),
-        ),
-      ),
-      'foreign keys' => array(
-        'tid' => array(
-          'columns' => array(
-            'tid' => 'tid',
-          ),
-          'table' => 'taxonomy_term_data',
-        ),
-      ),
-      'indexes' => array(
-        'tid' => array(
-          0 => 'tid',
-        ),
-      ),
-      'locked' => '0',
-      'module' => 'taxonomy',
-      'settings' => array(
-        'allowed_values' => array(
-          0 => array(
-            'vocabulary' => 'sba_organization_issues',
-            'parent' => '0',
-          ),
-        ),
-      ),
-    ),
-    'field_instance' => array(
-      'field_name' => 'field_sba_organization_issues',
-      'entity_type' => 'node',
-      'bundle' => 'sba_message_action',
-      'label' => $t("Organization Issues"),
-      'widget' => array(
-        'type' => 'options_buttons',
-      ),
-      'default_value' => NULL,
-      'description' => '',
-      'display' => array(
-        'default' => array(
-          'label' => 'above',
-          'settings' => array(),
-          'type' => 'hidden',
-          'weight' => '3',
-        ),
-        'teaser' => array(
-          'label' => 'above',
-          'settings' => array(),
-          'type' => 'hidden',
-          'weight' => 0,
-        ),
-      ),
-      'required' => FALSE,
-      'widget' => array(
-        'active' => 1,
-        'module' => 'options',
-        'settings' => array(),
-        'type' => 'options_buttons',
-        'weight' => 4,
-      ),
-
-    ),
-  );
-
-  // Legislative issues.
-  $fields['sba_legislative_issues'] = array(
-    'field_config' => array(
-      'field_name' => 'field_sba_legislative_issues',
-      'type' => 'taxonomy_term_reference',
-      'translatable' => '0',
-      'cardinality' => '-1',
-      'foreign keys' => array(
-        'tid' => array(
-          'columns' => array(
-            'tid' => 'tid',
-          ),
-          'table' => 'taxonomy_term_data',
-        ),
-      ),
-      'indexes' => array(
-        'tid' => array(
-          0 => 'tid',
-        ),
-      ),
-      'locked' => '0',
-      'module' => 'taxonomy',
-      'settings' => array(
-        'allowed_values' => array(
-          0 => array(
-            'vocabulary' => 'sba_legislative_issues',
-            'parent' => '0',
-          ),
-        ),
-      ),
-    ),
-    'field_instance' => array(
-      'field_name' => 'field_sba_legislative_issues',
-      'entity_type' => 'node',
-      'bundle' => 'sba_message_action',
-      'label' => $t("Legislative Issues"),
-      'default_value' => NULL,
-      'required' => 0,
-      'description' => '',
-      'display' => array(
-        'default' => array(
-          'label' => 'above',
-          'settings' => array(),
-          'type' => 'hidden',
-          'weight' => '4',
-        ),
-        'teaser' => array(
-          'label' => 'above',
-          'settings' => array(),
-          'type' => 'hidden',
-          'weight' => 0,
-        ),
-      ),
-      'widget' => array(
-        'active' => 1,
-        'module' => 'options',
-        'settings' => array(),
-        'type' => 'options_buttons',
-        'weight' => 5,
-      ),
-    ),
-  );
-
-  return $fields;
-}
-
-
-
  /**
   *  Add springboard_advocacy action id table
   */
@@ -344,22 +81,7 @@ function springboard_advocacy_update_7001() {
 }
 
 /**
- * Create Legislative Issues and Organization Issues vocabularies, if they don't exist.
- */
-function springboard_advocacy_update_7002() {
-  _springboard_advocacy_install_vocab_sba_organization_issues();
-  _springboard_advocacy_install_vocab_sba_legislative_issues();
-}
-
-/**
- * Create Legislative Issues and Organization Issues term reference fields, if they don't exist.
- */
-function springboard_advocacy_update_7003() {
-  _springboard_advocacy_install_taxonomy_fields();
-}
-
-/**
- * rename alert table to actions
+ * rename alert table to actions.
  */
 function springboard_advocacy_update_7004() {
   if(db_table_exists('springboard_advocacy_alert_id') != FALSE && db_table_exists('sba_form_id') == FALSE) {
@@ -377,5 +99,26 @@ function springboard_advocacy_update_7005() {
   $schema = module_invoke('springboard_advocacy', 'schema');
   if(db_field_exists('sba_form_id', 'precedence') == FALSE) {
     db_add_field('sba_form_id', 'precedence', $schema['sba_form_id']['fields']['precedence']);
+  }
+}
+
+/**
+ * rename alert var to action
+ */
+function springboard_advocacy_update_7006() {
+  $types = array('springboard_petition', 'sba_message_action');
+  variable_set('springboard_advocacy_goal_types', $types);
+}
+
+/**
+ * Delete the legislative issues vocab if actions is not enabled.
+ */
+function springboard_advocacy_update_7007() {
+  if (module_exists('taxonomy') && !module_exists('sba_message_action')) {
+    foreach (taxonomy_get_vocabularies() as $vocab) {
+      if ($vocab->machine_name == 'sba_legislative_issues') {
+        taxonomy_vocabulary_delete($vocab->vid);
+      }
+    }
   }
 }

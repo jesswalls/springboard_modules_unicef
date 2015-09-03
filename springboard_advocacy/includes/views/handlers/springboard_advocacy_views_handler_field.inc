@@ -28,32 +28,42 @@ class springboard_advocacy_views_handler_field extends views_handler_field
     }
   }
 
+  /**
+   * Override parent get_value.
+   * @param $values
+   * @param null $field
+   * @return string
+   */
   function get_value($values, $field = NULL) {
-    $alias = isset($field) ? $this->aliases[$field] : $this->field_alias;
 
+    $alias = isset($field) ? $this->aliases[$field] : $this->field_alias;
     if($alias == 'committee_memberships' && isset($values->committee_memberships)) {
+      $result = array();
       foreach($values->committee_memberships as $membership) {
         $result[] = $membership->committee_name;
       };
       return implode("<br />", $result);
-
     }
     else if (isset($values->{$alias})) {
       return $values->{$alias};
     }
   }
 
+  /**
+   * Override parent render.
+   * @param $values
+   * @return mixed|string
+   */
   function render($values) {
 
     $value = $this->get_value($values);
+    $value = $this->sanitize_value($value);
+
     $alias = isset($field) ? $this->aliases[$field] : $this->field_alias;
-
     if($alias == 'committee_memberships') {
-      $value = $this->sanitize_value($value);
-      return str_replace('&lt;br /&gt;', '<br />', $value);
-
+      $value =  str_replace('&lt;br /&gt;', '<br />', $value);
     }
 
-    return $this->sanitize_value($value);
+    return $value;
   }
 }

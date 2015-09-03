@@ -336,3 +336,12 @@ function springboard_petition_update_7002() {
   db_add_primary_key('springboard_petition_opt_in', array('sid'));
   db_query('UPDATE {springboard_petition_opt_in} s SET created = (SELECT submitted FROM {webform_submissions} w WHERE w.sid = s.sid)');
 }
+
+/**
+ * Enable sba_quicksign if springboard petition db table exists
+ */
+function springboard_petition_update_7003() {
+  if(db_table_exists('springboard_quicksign')) {
+      module_enable(array('sba_quicksign'));
+  }
+}

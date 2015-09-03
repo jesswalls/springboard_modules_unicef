@@ -1,0 +1,191 @@
+<?php
+/**
+ * @file
+ * Fundraiser sustainer tests for failed sustainer processing.
+ */
+
+/**
+ *
+ */
+class FundraiserSustainersProcessingExceptionHandlingTestCase extends FundraiserSustainerSetup {
+
+  /**
+   * The donation form.
+   *
+   * @var stdClass
+   */
+  protected $node;
+
+  /**
+   * The credit card expiration date.
+   *
+   * @var \DateTime
+   */
+  protected $expiration;
+
+  /**
+   * Implements getInfo(). Declares this test class to fundraiser testing.
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'Fundraiser sustainers processing exception handling',
+      'description' => 'Tests fundraiser sustainers failed processing.',
+      'group' => 'Fundraiser Sustainers',
+    );
+  }
+
+  /**
+   * Implements setUp().
+   */
+  public function setUp($additional_modules = array()) {
+    $additional_modules[] = 'fundraiser_sustainers';
+    parent::setUp($additional_modules);
+
+    $this->node = $this->createDonationForm();
+    $this->expiration = new DateTime('now +3 months');
+
+    $this->setSustainerKey();
+  }
+
+  /**
+   * Confirm donations process sequentially.
+   */
+  public function testExceptionHandlingSuccess() {
+    $series = array();
+
+    // For some reaosn I get a 403 when I first visit this, but a 200
+    // all other times.
+    $this->drupalGet('node/' . $this->node->nid);
+
+    // Create three series.
+    for ($i = 0; $i < 3; $i++) {
+      $this->submitRecurringDonation($this->node->nid, $this->expiration);
+      $master_did = $this->getMaxMasterDid();
+
+      // Advance each series.
+      $series[$i] = array(
+        'master_did' => $master_did,
+        'advance_did' => $this->advanceCharge($master_did),
+      );
+    }
+    // Add a slight pause here so that the charge date will be in the past.
+    sleep(1);
+    $this->cronRun();
+
+    // Confirm all processed.
+    foreach ($series as $thing) {
+      $this->assertDonationIsSuccessfullyProcessed($thing['advance_did']);
+    }
+  }
+
+  /**
+   * Confirm donations process sequentially even when a catchable failure occurs.
+   */
+  public function testExceptionHandlingFailure() {
+    $series = array();
+
+    // For some reaosn I get a 403 when I first visit this, but a 200
+    // all other times.
+    $this->drupalGet('node/' . $this->node->nid);
+
+    // Create three series.
+    for ($i = 0; $i < 3; $i++) {
+      $this->submitRecurringDonation($this->node->nid, $this->expiration);
+      $master_did = $this->getMaxMasterDid();
+
+      // Advance each series.
+      $series[$i] = array(
+        'master_did' => $master_did,
+        'advance_did' => $this->advanceCharge($master_did),
+      );
+    }
+
+    // Add a slight pause here so that the charge date will be in the past.
+    sleep(1);
+
+    // Delete the order on the second donation to force an exception.
+    commerce_order_delete($series[1]['advance_did']);
+
+    $this->cronRun();
+
+    // Assert the first and third processed.
+    $this->assertDonationIsSuccessfullyProcessed($series[0]['advance_did']);
+    $this->assertDonationIsSuccessfullyProcessed($series[2]['advance_did']);
+
+    // Assert the second failed.
+    $this->assertDonationIsNotSuccessfullyProcessed($series[1]['advance_did']);
+
+    // Assert the watchdog message was entered.
+    $watchdog_message = 'Exception thrown while processing a sustainer. Sustainer ID: %did. %type: !message in %function (line %line of %file).';
+    $this->assertWatchdogMessage($watchdog_message, $series[1]['advance_did'], 'The correct watchdog message was logged.');
+  }
+
+  protected function getMaxMasterDid() {
+    return db_query("SELECT max(master_did) FROM {fundraiser_sustainers}")->fetchField();
+  }
+
+  protected function advanceCharge($master_did) {
+    $did = db_query_range("SELECT did FROM {fundraiser_sustainers} WHERE master_did = :master_did AND lock_id = 0 AND gateway_resp IS NULL ORDER BY did ASC", 0 , 1, array(':master_did' => $master_did))
+      ->fetchField();
+
+    $recurring = array(
+      'did' => $did,
+      'new_state' => 'scheduled',
+      'next_charge' => time(),
+    );
+
+    _fundraiser_sustainers_update_recurring($recurring);
+
+    return $did;
+  }
+
+  /**
+   * Assert a donation has processed.
+   *
+   * @param $did numeric
+   *   The donation id to assert.
+   *
+   * @return object
+   *   The result of the assertion.
+   */
+  protected function assertDonationIsSuccessfullyProcessed($did) {
+    $donation = fundraiser_donation_get_donation($did);
+    $this->assertEqual($donation->recurring->gateway_resp, 'success', 'Donation is successfully processed.');
+  }
+
+  /**
+   * Assert a donation has not processed.
+   *
+   * @param $did numeric
+   *   The donation id to assert.
+   *
+   * @return object
+   *   The result of the assertion.
+   */
+  protected function assertDonationIsNotSuccessfullyProcessed($did) {
+    $status = db_query("SELECT gateway_resp FROM {fundraiser_sustainers} WHERE did = :did", array(':did' => $did))
+      ->fetchField();
+
+    $this->assertNotEqual($status, 'success', 'Donation is not successfully processed.');
+  }
+
+  /**
+   * Assert the watchdog message has been created with the correct sid variable.
+   *
+   * @param $watchdog_message string
+   *   The watchdog message to search for in the database table.
+   * @param $did numeric
+   *   The donation id to assert.
+   * @param $message string
+   *   The message to return to the test.
+   *
+   * @return object
+   *   The result of the assertion.
+   */
+  private function assertWatchdogMessage($watchdog_message, $did, $message) {
+    $db_variables = db_query_range("SELECT variables FROM {watchdog} WHERE message = :message", 0, 1, array(':message' => $watchdog_message))->fetchField();
+    $variables = unserialize($db_variables);
+    $status = (!empty($variables['%did']) && $variables['%did'] == $did) ? TRUE : FALSE;
+    return $this->assert($status, format_string('@message', array('@message' => $message)));
+  }
+}

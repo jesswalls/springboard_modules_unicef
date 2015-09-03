@@ -10,11 +10,13 @@
  */
 class springboard_advocacy_views_plugin_cache_time extends views_plugin_cache_time {
 
+
   /**
    * Save data to the cache.
    *
    * We save a hash of the search terms in order to detect
    * if they change and the cache must expire
+   * @param $type
    */
   function cache_set($type) {
     switch ($type) {
@@ -43,7 +45,8 @@ class springboard_advocacy_views_plugin_cache_time extends views_plugin_cache_ti
 
   /**
    * Retrieve data from the cache.
-   *
+   * @param $type
+   * @return bool
    */
   function cache_get($type) {
     $cutoff = $this->cache_expire($type);
@@ -94,9 +97,12 @@ class springboard_advocacy_views_plugin_cache_time extends views_plugin_cache_ti
     }
   }
 
+
   /**
    * Compare a hash of the current search terms with hash of cached search terms.
    *
+   * @param $cache
+   * @return bool
    */
   function hash_compare($cache) {
     $cached_query = isset($cache->data['current_query']) ? $cache->data['current_query'] : '';

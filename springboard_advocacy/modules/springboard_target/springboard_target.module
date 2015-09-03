@@ -1,47 +1,51 @@
 <?php
 
 /**
- * Implements hook_menu
- *
- * springboard_advocacy_menu_common provides dashboard settings
+ * @file
+ * Base module for custom targets.
  */
 
+/**
+ * Implements hook_menu().
+ *
+ * Springboard_advocacy_menu_common provides dashboard settings.
+ */
 function springboard_target_menu() {
   $items = array();
 
   $items['admin/springboard/advocacy/targets/custom-targets'] = array(
-      'title' => 'Advocacy: Target Center',
-      'page arguments' => array('custom-targets'),
-      'access arguments' => array('view targets'),
-    ) + springboard_advocacy_menu_common(FALSE, TRUE);
+    'title' => 'Advocacy: Target Center',
+    'page arguments' => array('custom-targets'),
+    'access arguments' => array('view targets'),
+  ) + springboard_advocacy_menu_common(FALSE, TRUE);
 
   $items['admin/springboard/advocacy/targets/custom-targets/add'] = array(
-      'title' => 'Advocacy: Target Center: Add',
-      'access arguments' => array('create targets'),
-      'page arguments' => array('add-custom-targets'),
-    ) + springboard_advocacy_menu_common(FALSE, TRUE);
+    'title' => 'Advocacy: Target Center: Add',
+    'access arguments' => array('create targets'),
+    'page arguments' => array('add-custom-targets'),
+  ) + springboard_advocacy_menu_common(FALSE, TRUE);
 
   $items['admin/springboard/advocacy/targets/custom-targets/%/edit'] = array(
-      'title' => 'Advocacy: Target Center: Edit',
-      'access arguments' => array('edit targets'),
-      'page arguments' => array('edit-custom-targets', 5),
-    ) + springboard_advocacy_menu_common(FALSE, TRUE);
+    'title' => 'Advocacy: Target Center: Edit',
+    'access arguments' => array('edit targets'),
+    'page arguments' => array('edit-custom-targets', 5),
+  ) + springboard_advocacy_menu_common(FALSE, TRUE);
 
   $items['admin/springboard/advocacy/targets/custom-targets/%/delete'] = array(
-      'title' => 'Advocacy: Target Center: Delete',
-      'access arguments' => array('delete targets'),
-      'page arguments' => array('springboard_target_delete', 5),
-      'page callback' => 'drupal_get_form',
-      'file' => 'springboard_target.custom_targets.inc',
-      'file path' => drupal_get_path('module', 'springboard_target') . '/includes',
-      'type' => MENU_CALLBACK,
-    );
+    'title' => 'Advocacy: Target Center: Delete',
+    'access arguments' => array('delete targets'),
+    'page arguments' => array('springboard_target_delete', 5),
+    'page callback' => 'drupal_get_form',
+    'file' => 'springboard_target.custom_targets.inc',
+    'file path' => drupal_get_path('module', 'springboard_target') . '/includes',
+    'type' => MENU_CALLBACK,
+  );
 
   return $items;
 }
 
 /**
- * Implements hook_permissions
+ * Implements hook_permissions().
  *
  */
 function springboard_target_permission() {
@@ -60,7 +64,7 @@ function springboard_target_permission() {
     ),
     'delete targets' => array(
       'title' => t('Delete Targets'),
-      'description' => t(' Custom targets.'),
+      'description' => t('Custom targets.'),
     ),
     'add target to action' => array(
       'title' => t('Add target to action.'),
@@ -82,9 +86,7 @@ function springboard_target_user_can_access_targets() {
 
 
 /**
- * Implements hook_views_api
- *
- * @return array
+ * Implements hook_views_api().
  */
 function springboard_target_views_api() {
   return array(
@@ -93,11 +95,9 @@ function springboard_target_views_api() {
 }
 
 /**
- * Implements hook_view_pre_render
+ * Implements hook_view_pre_render().
  *
  * Change the no results text in custom target listing.
- *
- * @param $view
  */
 function springboard_target_views_pre_render(&$view) {
   if ($view->name == 'sba_custom_targets' && $view->current_display == 'block_1') {

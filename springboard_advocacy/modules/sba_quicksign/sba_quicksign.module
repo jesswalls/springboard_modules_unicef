@@ -1,9 +1,9 @@
 <?php
 
 /**
- * Implements hook_views_api(). From Views module.
+ * Implements hook_views_api().
  */
-function springboard_petition_quicksign_views_api() {
+function sba_quicksign_views_api() {
   return array(
     'api' => 3,
   );
@@ -12,42 +12,66 @@ function springboard_petition_quicksign_views_api() {
 /**
  * Quick sign form.
  */
-function springboard_petition_quicksign_form() {
+function sba_quicksign_form() {
   global $user;
   $node = node_load(arg(1));
-  $settings = isset($node->nid) ? springboard_petition_quicksign_settings($node->nid) : array();
+  $settings = isset($node->nid) ? sba_quicksign_settings($node->nid) : array();
   $description_format = isset($settings['quicksign_description_format']) ? $settings['quicksign_description_format'] : NULL;
+
   $form = array();
-  // TODO: theme functions for label and description.
-  $form['quicksign_label'] = array(
-    '#markup' => isset($settings['quicksign_label']) ? $settings['quicksign_label'] : '',
-  );
-  $form['quicksign_description'] = array(
+  if ($node->type != 'springboard_petition') {
+    $form['qsign'] = array(
+      '#type' => 'fieldset',
+      '#title' => isset($settings['quicksign_label']) ? $settings['quicksign_label'] : '',
+    );
+  }
+  else {
+    $form['qsign'] = array(
+      '#type' => 'container',
+    );
+    $form['qsign']['quicksign_label'] = array(
+      '#markup' => isset($settings['quicksign_label']) ? $settings['quicksign_label'] : '',
+      '#prefix' => '<h2 class="quicksign-label">',
+      '#suffix' => '</h2>',
+    );
+  }
+
+  $form['qsign']['quicksign_description'] = array(
     '#markup' => isset($settings['quicksign_description']) ? check_markup($settings['quicksign_description'], $description_format) : '',
+    '#prefix' => '<div class="quicksign-description">',
+    '#suffix' => '</div>',
   );
-  $form['quicksign_mail'] = array(
+
+  $form['qsign']['quicksign_mail'] = array(
     '#type' => 'textfield',
     '#title' => '',
     '#default_value' => $user->uid ? $user->mail : '',
   );
+
   $form['nid'] = array(
     '#type' => 'value',
     '#value' => $node->nid,
   );
+
   $form['submit'] = array(
     '#type' => 'submit',
-    '#value' => isset($settings['quicksign_button_text']) ? check_plain($settings['quicksign_button_text']) : t('Sign our petiton'),
+    '#value' => isset($settings['quicksign_button_text']) ? check_plain($settings['quicksign_button_text']) : '',
   );
-  $form['#validate'][] = 'springboard_petition_quicksign_form_validate';
-  $form['#submit'][] = 'springboard_petition_quicksign_form_submit';
+
+  $form['#validate'][] = 'sba_quicksign_form_validate';
+  $form['#submit'][] = 'sba_quicksign_form_submit';
   return $form;
 }
 
+
 /**
  * Validation callback for quicksign form.
+ *
+ * @param $form
+ * @param $form_state
  */
-function springboard_petition_quicksign_form_validate(&$form, &$form_state) {
-  // Validate mail field
+function sba_quicksign_form_validate(&$form, &$form_state) {
+  // Validate mail field.
   $mail = isset($form_state['values']['quicksign_mail']) ? $form_state['values']['quicksign_mail'] : FALSE;
   if (!valid_email_address($mail)) {
     form_set_error('quicksign_mail', t('The email addressed entered is not valid.'));
@@ -55,25 +79,28 @@ function springboard_petition_quicksign_form_validate(&$form, &$form_state) {
   }
 
   $node = node_load($form_state['values']['nid']);
-  // Load user profile from email
+  // Load user profile from email.
   $account = user_load_by_mail($mail);
-  // No profile available
+  // No profile available.
   if (!$account) {
-    $_SESSION['springboard_petition_quicksign']['profile']['mail'] = $mail;
-    drupal_set_message(t('No account with the email address !mail was found. Please fill out the full form to sign the petition.', array('!mail' => $mail)));
+    $_SESSION['sba_quicksign']['profile']['mail'] = $mail;
+    drupal_set_message(t("We're sorry, we did not find an account with the email address !mail. Please fill out the full form. Next time you will be able to submit using just your email address.", array('!mail' => $mail)));
     drupal_redirect_form($form_state);
   }
 
-  // Compile list of webform required fields
-  $required_fields = springboard_petition_quicksign_get_required_fields($node);
-  // compare profile to required fields via the Webform User field map.
+  // Compile list of webform required fields.
+  $required_fields = sba_quicksign_get_required_fields($node);
+  // Compare profile to required fields via the Webform User field map.
   $map = webform_user_user_map($node->nid);
   $missing_fields = FALSE;
+  $profile = array();
   foreach ($map as $webform_field => $profile_field) {
-    $items  = field_get_items('user', $account, $profile_field);
-    $profile[$webform_field] = !empty($items[0]['value']) ? $items[0]['value'] : FALSE;
-    // special handling for mail
-    if ($webform_field == 'mail') {
+    if ($webform_field != 'mail') {
+      $items = field_get_items('user', $account, $profile_field);
+      $profile[$webform_field] = !empty($items[0]['value']) ? $items[0]['value'] : FALSE;
+    }
+    else {
+    // Special handling for mail
       $profile['mail'] = $mail;
     }
     if (in_array($webform_field, $required_fields) && empty($profile[$webform_field])) {
@@ -89,130 +116,134 @@ function springboard_petition_quicksign_form_validate(&$form, &$form_state) {
   }
 
   if ($missing_fields) {
-    $_SESSION['springboard_petition_quicksign']['profile'] = $profile;
-    drupal_set_message(t("Unfortunately, we don't have enough information to complete your signature via the short form. Please fill out the full form to sign this petition."));
+    $_SESSION['sba_quicksign']['profile'] = $profile;
+    if ($node->type == 'sba_message_action') {
+      drupal_set_message(t("Unfortunately, we don't have enough information to submit your message. Please complete the additional forms below. Next time you will be able to sign using just your email address."));
+    }
+    else {
+      drupal_set_message(t("Unfortunately, we don't have enough information to submit your petition. Please complete the additional forms below. Next time you will be able to sign using just your email address."));
+    }
     drupal_redirect_form($form_state);
   }
 
   // If everything has gone smoothly to this point package up the
   // loaded profile and pass it off for use during the submit callback.
   $form_state['node'] = $node;
-  $form_state['springboard_petition_quicksign']['profile'] = $profile;
+  $form_state['sba_quicksign']['profile'] = $profile;
   // No validation errors, set quicksign flag in session so we can pick this up
   // in webform submission insert hook.
-  $_SESSION['springboard_petition_quicksign'] = TRUE;
+  $_SESSION['sba_quicksign'] = TRUE;
 }
+
 
 /**
  * Submit callback for quicksign form.
+ *
+ * @param $form
+ * @param $form_state
  */
-function springboard_petition_quicksign_form_submit($form, &$form_state) {
+function sba_quicksign_form_submit($form, &$form_state) {
   $node = $form_state['node'];
-  $profile = isset($form_state['springboard_petition_quicksign']['profile']) ? $form_state['springboard_petition_quicksign']['profile'] : FALSE;
+  $profile = isset($form_state['sba_quicksign']['profile']) ? $form_state['sba_quicksign']['profile'] : FALSE;
   if ($profile) {
-    // Build submission
-
-    // Execute form submission
-    _springboard_petition_quicksign_build_submission($form, $form_state, $node, $profile);
+    _sba_quicksign_build_submission($form, $form_state, $node, $profile);
   }
 }
 
+
 /**
- * Implements hook_form_BASE_FORM_ID_alter() for node forms.
+ * Implements hook_form_BASE_FORM_ID_alter().
  */
-function springboard_petition_quicksign_form_node_form_alter(&$form, &$form_state, $form_id) {
+function sba_quicksign_form_node_form_alter(&$form, &$form_state, $form_id) {
   // Modify the options on a specific instance of this node type.
   $node = isset($form['#node']) ? $form['#node'] : FALSE;
-  if (isset($node->type) && springboard_petition_is_petition_type($node->type)) {
+  if (isset($node->type) && sba_quicksign_is_quicksign_type($node->type)) {
     // TODO: refactor this out.
-    $node->quicksign_enabled = springboard_petition_quicksign_is_enabled($node);
-    $settings = isset($node->nid) ? springboard_petition_quicksign_settings($node->nid) : array();
-    $form['springboard_petition_quicksign'] = array(
+    $node->quicksign_enabled = sba_quicksign_is_enabled($node);
+    $settings = isset($node->nid) ? sba_quicksign_settings($node->nid) : array();
+    $form['sba_quicksign'] = array(
       '#type' => 'fieldset',
       '#title' => t('Quick Sign settings'),
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
       '#group' => 'additional_settings',
     );
-    $form['springboard_petition_quicksign']['quicksign_enabled'] = array(
+    $form['sba_quicksign']['quicksign_enabled'] = array(
       '#type' => 'checkbox',
       '#title' => t('Enable Quick Sign'),
-      '#description' => t('Turning on Quick Sign will allow users with existing profiles to sign a petition using only their email address.'),
+      '#description' => t('Turning on Quick Sign will allow users with existing profiles to submit a petition or action using only their email address.'),
       '#default_value' => isset($node->quicksign_enabled) ? $node->quicksign_enabled : '',
     );
-    $form['springboard_petition_quicksign']['quicksign_label'] = array(
+    $form['sba_quicksign']['quicksign_label'] = array(
       '#type' => 'textfield',
       '#title' => t('Form Label'),
       '#description' => t('Label text to display above the quick sign form.'),
-      '#default_value' => isset($settings['quicksign_label']) ? $settings['quicksign_label'] : '',
+      '#default_value' => isset($settings['quicksign_label']) ? $settings['quicksign_label'] : 'Already a supporter?',
     );
-    $form['springboard_petition_quicksign']['quicksign_description'] = array(
+
+    $default_desc = $node->type == 'sba_message_action' ? t('If we already have your information, just enter your email address and click to send this message now.') : t('If we already have your information, just enter your email address and click to sign this petition now.');
+    $form['sba_quicksign']['quicksign_description'] = array(
       '#type' => 'text_format',
       '#title' => t('Form description'),
       '#description' => t('Additional descriptive text displayed above the quick sign form.'),
-      '#default_value' => isset($settings['quicksign_description']) ? $settings['quicksign_description'] : '',
-      '#format' => isset($settings['quicksign_description_format']) ? $settings['quicksign_description_format'] : NULL
+      '#default_value' => isset($settings['quicksign_description']) ? $settings['quicksign_description'] : $default_desc,
+      '#format' => isset($settings['quicksign_description_format']) ? $settings['quicksign_description_format'] : NULL,
     );
-    $form['springboard_petition_quicksign']['quicksign_button_text'] = array(
+
+    $default = $node->type == 'sba_message_action' ? t('Sign now') : t('Sign now');
+    $form['sba_quicksign']['quicksign_button_text'] = array(
       '#type' => 'textfield',
       '#title' => t('Submit button text'),
       '#description' => t('Change the text on the quick sign form submit button.'),
-      '#default_value' => isset($settings['quicksign_button_text']) ? $settings['quicksign_button_text'] : t('Sign our petiton'),
+      '#default_value' => isset($settings['quicksign_button_text']) ? $settings['quicksign_button_text'] : $default,
     );
-    // No validation or submit handlers, we'll handle this during hook_node_insert() and hook_node_update().
+    // No validation or submit handlers, we'll handle this during
+    // hook_node_insert() and hook_node_update().
   }
 }
 
 /**
- * Implements hook_form_FORM_ID_alter().
- *
- * Alters the quicksign node view.
+ * Implements hook_form_alter().
  */
-function springboard_petition_form_springboard_petition_quicksign_form_alter(&$form, &$form_state, $form_id) {
-  // Add wrapper elements to the quicksign fields.
-  $form['quicksign_label']['#prefix'] = '<h2 class="quicksign-label">';
-  $form['quicksign_label']['#suffix'] = '</h2>';
-  $form['quicksign_description']['#prefix'] = '<div class="quicksign-description">';
-  $form['quicksign_description']['#suffix'] = '</div>';
-}
-
-/**
- *  Implements hook_form_alter().
- */
-function springboard_petition_quicksign_form_alter(&$form, $form_state, $form_id) {
-  // Webform
+function sba_quicksign_form_alter(&$form, $form_state, $form_id) {
   if (strpos($form_id, 'webform_client') !== FALSE && arg(2) != 'submission' && arg(4) != 'edit') {
-    // Petition content type
-    if (isset($form['#node']) && springboard_petition_is_petition_type($form['#node']->type)) {
+    // Quicksign content type.
+    if (isset($form['#node']) && sba_quicksign_is_quicksign_type($form['#node']->type)) {
       $node = $form['#node'];
-      // Quicksign enabled
-      if (springboard_petition_quicksign_is_enabled($node)) {
+      // Quicksign enabled.
+      if (sba_quicksign_is_enabled($node)) {
         // Check for errors in quicksign form submission
         // If present attempt to set Webform fields with
         // profile values from prior submission.
-        $profile = !empty($_SESSION['springboard_petition_quicksign']['profile']) ? $_SESSION['springboard_petition_quicksign']['profile'] : FALSE;
+        $profile = !empty($_SESSION['sba_quicksign']['profile']) ? $_SESSION['sba_quicksign']['profile'] : FALSE;
         if ($profile) {
-          springboard_petition_quicksign_form_defaults($form, $node, $profile);
-          unset($_SESSION['springboard_petition_quicksign']);
+          sba_quicksign_form_defaults($form, $node, $profile);
+          if(count($_SESSION['sba_quicksign']['profile']) > 1 ) {
+            $form['#after_build'][] = 'sba_quicksign_after_build';
+          }
+          unset($_SESSION['sba_quicksign']);
         }
       }
     }
   }
 }
 
+function sba_quicksign_after_build($form, $form_state) {
+  $form['#attached']['js'][] = drupal_get_path('module', 'sba_quicksign') . '/js/sba_quicksign.js';
+  return $form;
+}
+
 /**
  * Populate a webform with defaults from the user profile.
  *
  * @param mixed $form
- *   Webform FAPI array.drupal_form_submit($form_id, $form_state, $node, $webform_submission);
- *
+ *   Webform FAPI array.
  * @param object $node
  *   Webform Node object.
- *
- * @param array $user_data
- *   User profile data to use during substitution
+ * @param array|bool $user_data
+ *   User profile data to use during substitution.
  */
-function springboard_petition_quicksign_form_defaults(&$form, $node, $user_data) {
+function sba_quicksign_form_defaults(&$form, $node, $user_data) {
   $components = $node->webform['components'];
   $component_hierarchy = __webform_user_parse_components($node->nid, $components);
   $map = webform_user_user_map($node->nid);
@@ -227,35 +258,38 @@ function springboard_petition_quicksign_form_defaults(&$form, $node, $user_data)
           case 'date':
             $form_field['#default_value'] = $profile_value;
             break;
+
           case 'checkboxes':
             if ($profile_value) {
               $form_field['#default_value'] = array($profile_field);
             }
             break;
+
           default:
             $form_field['#default_value'] = check_plain($profile_value);
             break;
         }
-      } // End if webform empty with a profile field value.
-    } // End if field is in component heirarchy.
+      }
+      // End if webform empty with a profile field value.
+    } // End if field is in component hierarchy.
   }
 }
 
 /**
  * Implements hook_node_insert().
  */
-function springboard_petition_quicksign_node_insert($node) {
-  if (springboard_petition_is_petition_type($node->type) && isset($node->quicksign_enabled)) {
-    springboard_petition_quicksign_save($node);
+function sba_quicksign_node_insert($node) {
+  if (sba_quicksign_is_quicksign_type($node->type) && isset($node->quicksign_enabled)) {
+    sba_quicksign_save($node);
   }
 }
 
 /**
  * Implements hook_node_update().
  */
-function springboard_petition_quicksign_node_update($node) {
-  if (springboard_petition_is_petition_type($node->type) && isset($node->quicksign_enabled)) {
-    springboard_petition_quicksign_save($node);
+function sba_quicksign_node_update($node) {
+  if (sba_quicksign_is_quicksign_type($node->type) && isset($node->quicksign_enabled)) {
+    sba_quicksign_save($node);
   }
 
 }
@@ -263,29 +297,34 @@ function springboard_petition_quicksign_node_update($node) {
 /**
  * Implements hook_node_delete().
  */
-function springboard_petition_quicksign_node_delete($node) {
-  if (springboard_petition_is_petition_type($node->type)) {
-    springboard_petition_quicksign_delete($node->nid);
+function sba_quicksign_node_delete($node) {
+  if (sba_quicksign_is_quicksign_type($node->type)) {
+    sba_quicksign_delete($node->nid);
   }
 }
+
 
 /**
  * Implements hook_node_view().
  */
-function springboard_petition_quicksign_node_view($node, $view_mode, $langcode) {
-  if (springboard_petition_is_petition_type($node->type)) {
-    if (springboard_petition_quicksign_is_enabled($node)) {
-      $node->content['springboard_petition_quicksign'] = drupal_get_form('springboard_petition_quicksign_form');
-      $node->content['springboard_petition_quicksign']['#weight'] = 1000;
+function sba_quicksign_node_view($node, $view_mode, $langcode) {
+  if (sba_quicksign_is_quicksign_type($node->type)) {
+    if (sba_quicksign_is_enabled($node)) {
+      $node->content['sba_quicksign'] = drupal_get_form('sba_quicksign_form');
+      $node->content['sba_quicksign']['#weight'] = 1000;
     }
   }
 }
 
+
 /**
  * Save quick sign settings per-node.
+ *
+ * @param object $node
+ *   The node object.
  */
-function springboard_petition_quicksign_save($node) {
-  springboard_petition_quicksign_delete($node->nid);
+function sba_quicksign_save($node) {
+  sba_quicksign_delete($node->nid);
   $record = array(
     'nid' => $node->nid,
     'quicksign_enabled' => $node->quicksign_enabled,
@@ -294,7 +333,7 @@ function springboard_petition_quicksign_save($node) {
     'form_description_format' => $node->quicksign_description['format'],
     'submit_button_text' => $node->quicksign_button_text,
   );
-  drupal_write_record('springboard_quicksign', $record);
+  drupal_write_record('sba_quicksign', $record);
 }
 
 /**
@@ -303,8 +342,8 @@ function springboard_petition_quicksign_save($node) {
  * @param int $nid
  *   Node ID.
  */
-function springboard_petition_quicksign_delete($nid) {
-  db_delete('springboard_quicksign')
+function sba_quicksign_delete($nid) {
+  db_delete('sba_quicksign')
             ->condition('nid', $nid, '=')
             ->execute();
 }
@@ -312,23 +351,32 @@ function springboard_petition_quicksign_delete($nid) {
 /**
  * Indicates if a given node has quicksign enabled.
  *
- * @param object $node
- *   Node object
+ * @param object|bool $node
+ *   Node object or FALSE.
  *
- * @return
- *   returns TRUE if node is a petition node type and
+ * @return boolean
+ *   returns TRUE if node is a quicksign node type and
  *   quicksign is enabled, otherwise FALSE.
  */
-function springboard_petition_quicksign_is_enabled($node) {
-  if (!isset($node->nid) || !springboard_petition_is_petition_type($node->type)) {
+function sba_quicksign_is_enabled($node) {
+  if (!isset($node->nid) || !sba_quicksign_is_quicksign_type($node->type)) {
     return FALSE;
   }
 
-  $result = db_query('SELECT quicksign_enabled FROM {springboard_quicksign} WHERE nid = :nid', array(':nid' => $node->nid));
-  return (bool) $result->fetchColumn();
+  $result = db_query('SELECT quicksign_enabled FROM {sba_quicksign} WHERE nid = :nid', array(':nid' => $node->nid));
+  if((bool) $result->fetchField() === TRUE) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
 }
 
-function springboard_petition_quicksign_settings($nid) {
+/**
+ * @param $nid
+ * @return mixed
+ */
+function sba_quicksign_settings($nid) {
   $results = db_query('
     SELECT
       nid,
@@ -337,16 +385,21 @@ function springboard_petition_quicksign_settings($nid) {
       form_description AS quicksign_description,
       form_description_format AS quicksign_description_format,
       submit_button_text AS quicksign_button_text
-     FROM {springboard_quicksign}
+     FROM {sba_quicksign}
      WHERE nid = :nid;', array(':nid' => $nid));
 
   return $results->fetchAssoc();
 }
 
 /**
+ * Helper to find required fields.
  *
+ * @param object $node
+ *
+ * @return array
+ *   $required_fields
  */
-function springboard_petition_quicksign_get_required_fields($node) {
+function sba_quicksign_get_required_fields($node) {
   $required_fields = array();
   // TODO: we may need to convert to rendering component form api arrays
   // and then processing those, will need to test all commonly available
@@ -361,7 +414,13 @@ function springboard_petition_quicksign_get_required_fields($node) {
   return $required_fields;
 }
 
-function _springboard_petition_quicksign_build_submission($form, &$original_form_state, $node, $submission) {
+/**
+ * @param $form
+ * @param $original_form_state
+ * @param $node
+ * @param $submission
+ */
+function _sba_quicksign_build_submission($form, &$original_form_state, $node, $submission) {
   $submit_text = $node->content['webform']['#form']['actions']['submit']['#value']; // sketchy.
   $form_id = 'webform_client_form_' . $node->nid;
   $form_state['webform_completed'] = 1;
@@ -379,7 +438,8 @@ function _springboard_petition_quicksign_build_submission($form, &$original_form
     'values' => array(),
   );
   $form_state['clicked_button']['#parents'] = NULL;
-  $form_state['values']['submitted'] = springboard_petition_quicksign_submission_tree_build($submission, $node->webform['components'], $tree, 0);
+  $tree = array();
+  $form_state['values']['submitted'] = sba_quicksign_submission_tree_build($submission, $node->webform['components'], $tree, 0);
   $webform_submission = array(
     'nid' => $node->nid,
     'uid' => 0,
@@ -403,7 +463,7 @@ function _springboard_petition_quicksign_build_submission($form, &$original_form
     }
   }
   drupal_form_submit($form_id, $form_state, $node, $webform_submission);
-  unset($_SESSION['springboard_petition_quicksign']);
+  unset($_SESSION['sba_quicksign']);
   // Pass through webform's version of $form_state['redirect']
   // This ensures form submission redirects correctly even though we
   // are processing a different form.
@@ -413,22 +473,19 @@ function _springboard_petition_quicksign_build_submission($form, &$original_form
 /**
  * Build the webform submission tree.
  *
- * @param array $submission
+ * @param $submission
  *   Associative array of webform component form keys and their values.
- *
- * @param array $src
- *   webform components organized by component id.
- *
- * @param array $tree
+ * @param $src
+ *   Webform components organized by component id.
+ * @param $tree
  *   Output storage.
- *
- * @param mixed $parent
+ * @param $parent
  *   Parent component (if any).
  *
  * @return mixed
  *   Returns the submitted values in a tree structure that Webform can parse.
  */
-function springboard_petition_quicksign_submission_tree_build($submission, $src, &$tree, $parent) {
+function sba_quicksign_submission_tree_build($submission, $src, &$tree, $parent) {
 
   foreach ($src as $cid => $component) {
     if ($component['pid']) {
@@ -441,19 +498,39 @@ function springboard_petition_quicksign_submission_tree_build($submission, $src,
     else {
       $tree[$component['form_key']] = isset($submission[$component['form_key']]) ? $submission[$component['form_key']] : NULL;
     }
-
   }
   return $tree;
 }
 
-function springboard_petition_quicksign_webform_submission_insert($node, $submission) {
-  $quicksign = isset($_SESSION['springboard_petition_quicksign']) ? $_SESSION['springboard_petition_quicksign'] : FALSE;
+/**
+ * Implements hook_webform_submission_insert().
+ */
+function sba_quicksign_webform_submission_insert($node, $submission) {
+  $quicksign = isset($_SESSION['sba_quicksign']) ? $_SESSION['sba_quicksign'] : FALSE;
   if ($quicksign) {
     $record = array(
       'sid' => $submission->sid,
       'nid' => $submission->nid,
       'created' => time(),
     );
-    drupal_write_record('springboard_quicksign_submissions', $record);
+    drupal_write_record('sba_quicksign_submissions', $record);
   }
+}
+
+/**
+ * Helper to determine petition type status.
+ *
+ * @param $type
+ *   The node type name.
+ *
+ * @return bool
+ *   $type
+ */
+function sba_quicksign_is_quicksign_type($type) {
+  $types = array('springboard_petition');
+  $quicksign = FALSE;
+  if (in_array($type, $types)) {
+    $quicksign = TRUE;
+  }
+  return $quicksign;
 }

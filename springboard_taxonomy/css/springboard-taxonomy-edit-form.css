@@ -1,0 +1,15 @@
+.form-item .sba-term-indent {
+    margin-left: 2em;
+}
+
+#edit-field-sba-legislative-issues label,
+#edit-organization-issues label {
+    display: inline;
+    font-size: 12px;
+}
+
+#edit-organization-issues .fieldset-description,
+#edit-field-sba-legislative-issues .fieldset-description  {
+    margin-bottom: 1em;
+    font-size:14px;
+}

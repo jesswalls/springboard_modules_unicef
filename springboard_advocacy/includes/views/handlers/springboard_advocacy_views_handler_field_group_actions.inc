@@ -6,7 +6,10 @@
  */
 
 /**
- * A handler to provide target_action links.
+ * A handler to provide group action links.
+ *
+ * NOT currently implemented anywhere. Custom groups
+ * are a planned feature.
  *
  * @ingroup views_field_handlers
  */
@@ -38,7 +41,6 @@ class springboard_advocacy_views_handler_field_group_actions extends views_handl
   }
 
   function render_links($values) {
-    global $user; 
 
     $links  = array();
     if (user_access('view targets') && !empty($this->options['which_links']['view'])) {

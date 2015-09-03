@@ -35,25 +35,24 @@ function salesforce_message_action_salesforce_genmap_map_fields_alter(&$fields, 
 function salesforce_message_action_node_insert($node) {
   // If node is a message action type.
   if ($node->type == 'sba_message_action') {
-    // And if we have a default map. Salesforce petition default is -10.
+    // And if we have a default map. Salesforce message action default is -20.
+    // Only copy the map for fresh inserts. Webform user will handle clones.
     $nid = SALESFORCE_MESSAGE_ACTION_DEFAULT_MAP_ID;
-    if (!empty($node->clone_from_original_nid)) {
-      $nid = $node->clone_from_original_nid;
+    if (empty($node->clone_from_original_nid)) {
+      $map = salesforce_genmap_load_map($nid, 'webform');
+      if (!empty($map)) {
+        // Copy the map to the node.
+        unset($map->mid);
+        $map->nid = $node->nid;
+        salesforce_genmap_save_map($map, 'webform');
+      }
     }
-    $map = salesforce_genmap_load_map($nid, 'webform');
-    if (!empty($map)) {
-      // Copy the map to the node.
-      unset($map->mid);
-      $map->nid = $node->nid;
-      salesforce_genmap_save_map($map, 'webform');
-    }
+    // Set the relationship from the submission to the contact.
+    $webform_user_reference_fields = variable_get('webform_user_reference_fields', array());
+    $webform_user_reference_fields[$node->nid] = 'Contact__c';
+    variable_set('webform_user_reference_fields', $webform_user_reference_fields);
   }
-  // Set the relationship from the submission to the contact.
-  $webform_user_reference_fields = variable_get('webform_user_reference_fields', array());
-  $webform_user_reference_fields[$node->nid] = 'Contact__c';
-  variable_set('webform_user_reference_fields', $webform_user_reference_fields);
 }
-
 /**
  * Implements hook_node_delete().
  *

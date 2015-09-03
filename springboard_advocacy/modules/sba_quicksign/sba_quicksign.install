@@ -1,22 +1,14 @@
 <?php
-
 /**
  * @file
  */
 
 /**
- * Implements hook_install().
- */
-function springboard_petition_quicksign_install() {
-
-}
-
-/**
  * Implements hook_schema().
  */
-function springboard_petition_quicksign_schema() {
-  $schema['springboard_quicksign'] = array(
-    'description' => 'Track nodes that are enabled as webform user nodes.',
+function sba_quicksign_schema() {
+  $schema['sba_quicksign'] = array(
+    'description' => 'Track nodes that have enabled quicksign.',
     'fields' => array(
       'nid' => array(
         'description' => 'The node',
@@ -55,7 +47,7 @@ function springboard_petition_quicksign_schema() {
     ),
     'primary key' => array('nid'),
   );
-  $schema['springboard_quicksign_submissions'] = array(
+  $schema['sba_quicksign_submissions'] = array(
     'description' => 'Log quicksign submissions.',
     'fields' => array(
       'nid' => array(
@@ -90,18 +82,40 @@ function springboard_petition_quicksign_schema() {
  */
 
 /**
- * Add columns to springboard_quicksign table.
+ * Move data from petition quicksign to advocacy quicksign.
  */
-function springboard_petition_quicksign_update_7001() {
-  db_add_field('springboard_quicksign', 'form_label', array('type' => 'varchar', 'length' => 255, 'default' => '', 'not null' => TRUE, 'description' => 'Quicksign form label.'));
-  db_add_field('springboard_quicksign', 'form_description', array('type' => 'text', 'description' => 'Additional description text.'));
-  db_add_field('springboard_quicksign', 'submit_button_text', array('type' => 'varchar', 'length' => 255, 'default' => '', 'description' => 'Submit button text.'));
+function sba_quicksign_update_7001() {
+
+  if(db_table_exists('springboard_quicksign')) {
+    $result = db_query('SELECT * from {springboard_quicksign}');
+    foreach ($result as $row) {
+      $record = array(
+        'nid' => $row->nid,
+        'quicksign_enabled' => $row->quicksign_enabled,
+        'form_label' => $row->form_label,
+        'form_description' => $row->form_description['value'],
+        'form_description_format' => $row->form_description_format,
+        'submit_button_text' => $row->submit_button_text,
+      );
+      db_insert('sba_quicksign')->fields($record)->execute();
+    }
+  }
+
+  if(db_table_exists('springboard_quicksign_submissions')) {
+    $result = db_query('SELECT * from {springboard_quicksign_submissions}');
+    foreach ($result as $row) {
+      $record = array(
+        'sid' => $row->sid,
+        'nid' => $row->nid,
+        'created' => $row->created,
+      );
+      db_insert('sba_quicksign_submissions')->fields($record)->execute();
+    }
+  }
+
+  if (module_exists('springboard_petition_quicksign')) {
+    module_disable(array('springboard_petition_quicksign'));
+  }
 }
 
-/**
- * Add column for description field format.
- */
-function springboard_petition_quicksign_update_7002() {
-  db_add_field('springboard_quicksign', 'form_description_format', array('type' => 'varchar', 'length' => 255, 'default' => '', 'not null' => TRUE, 'description' => 'Description text format.'));
-}
 

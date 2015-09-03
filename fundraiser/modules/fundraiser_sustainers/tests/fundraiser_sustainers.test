@@ -4,13 +4,10 @@
  * Fundraiser sustainer module web tests, test sustainers.
  */
 
-// Include the setup test class.
-module_load_include('test', 'fundraiser', 'tests/fundraiser.setup');
-
 /**
  * Setup and tear down web class. Does nothing else.
  */
-class FundraiserSustainerTest extends FundraiserSetup {
+class FundraiserSustainerTest extends FundraiserSustainerSetup {
 
   /**
    * Implements getInfo(). Declares this test class to fundraiser testing.
@@ -483,84 +480,6 @@ class FundraiserSustainerTest extends FundraiserSetup {
     $sustainers_processed = $this->fundraiserSustainerChargeCount($master_did);
     // Ensure no sustainers were actually processed.
     $this->assertEqual(1, $sustainers_processed, 'Number of sustainers processed is 1.');
-  }
-
-  /**
-   * Helper to create a fundraiser sustainer donation.
-   */
-  protected function createFundraiserSustainer() {
-    // Create a node.
-    $node = $this->createDonationForm();
-    // Post to the node.
-    $month = date('n', strtotime('+1 year'));
-    $year = date('Y', strtotime('+1 year'));
-    $post['submitted[payment_information][recurs_monthly][recurs]'] = 'recurs';
-    $post['submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_month]'] = $month;
-    $post['submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_year]'] = $year;
-    $post['submitted[donor_information][mail]'] = 'fundraiser_sustainer@example.com';
-    $this->submitDonation($node->nid, $post);
-  }
-
-  /**
-   * Helper function to create a series of recurring donations.
-   */
-  private function fundraiserSustainerCreateRecurringDonation($post_config = NULL) {
-    // Create a node.
-    $created_user = $this->createFundraiserUser();
-    $this->drupalLogin($created_user);
-    $node = $this->createDonationForm();
-    // Post to the node.
-    $month = date('n', strtotime('+1 year'));
-    $year = date('Y', strtotime('+1 year'));
-    $post['submitted[payment_information][recurs_monthly][recurs]'] = 'recurs';
-    $post['submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_month]'] = $month;
-    $post['submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_year]'] = $year;
-    $post['submitted[donor_information][mail]'] = $created_user->mail;
-
-    if (!empty($post_config)) {
-      $post = array_merge($post, (array) $post_config);
-    }
-
-    $this->submitDonation($node->nid, $post);
-    // Get the master did.
-    $donations = _fundraiser_get_donations();
-    $master_did = '';
-    foreach ($donations as $donation) {
-      $master_did = $donation->did;
-      break;
-    }
-    return $master_did;
-  }
-
-  /**
-   * Helper function to check how many sustainers were processed after cron is run.
-   */
-  private function fundraiserSustainerChargeCount($master_did) {
-    $query = db_select('fundraiser_sustainers', 'f')
-      ->fields('f')
-      ->condition('master_did', $master_did, '=')
-      ->condition('gateway_resp', 'success', '=')
-      ->condition('did', $master_did, '!='); // exclude first order in series
-    return $query->countQuery()->execute()->fetchField();
-  }
-
-  /**
-   * Helper function to create a sustainer key file.
-   *
-   * @param $key_value
-   *   The value of the sustainer key file.
-   */
-  private function setSustainerKey($key_value) {
-    $file_path = variable_get('file_public_path', conf_path() . '/files');
-    variable_set('encrypt_secure_key_path', $file_path);
-
-    // Delete file if it already exists.
-    if (file_exists($file_path . '/sustainer.key')) {
-      unlink($file_path . '/sustainer.key');
-    }
-
-    // Write a new sustainer key file.
-    file_put_contents($file_path . '/sustainer.key', $key_value);
   }
 
 }

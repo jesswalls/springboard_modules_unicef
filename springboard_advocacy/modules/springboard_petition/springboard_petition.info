@@ -4,4 +4,3 @@ core = 7.x
 package = Springboard Advocacy
 dependencies[] = springboard_advocacy
 dependencies[] = webform_user
-dependencies[] = fundraiser_webform

@@ -1689,3 +1689,41 @@ function _webform_user_mail_in_use($mail, $uid) {
   return FALSE;
 }
 
+/**
+ * Implements hook_webform_component_render_alter().
+ *
+ * Run token_replace() on text based webform components with node tokens.
+ */
+function webform_user_webform_component_render_alter(&$element, $component) {
+  // #default_value is used by the following types according to the api.
+  // checkbox, checkboxes, date, hidden, radio, radios, select, tableselect,
+  // textarea, text_format, textfield, token, weight.
+
+  // But token replacement probably only makes sense for these types.
+  $types = array('textfield', 'hidden', 'markup', 'textarea');
+
+  if (in_array($element['#type'], $types) && isset($element['#default_value']) && !empty($element['#default_value'])) {
+    $element['#default_value'] = webform_user_replace_tokens_in_component($element['#default_value'], $component['nid']);
+  }
+  // Special case for value elements.
+  elseif ($element['#type'] == 'value' && isset($element['#value']) && !empty($element['#value'])) {
+    $element['#value'] = webform_user_replace_tokens_in_component($element['#value'], $component['nid']);
+  }
+}
+
+/**
+ * Replace the tokens in a webform component's value or default_value.
+ *
+ * @param string $value
+ *   The text with tokens in it.
+ * @param int $nid
+ *   The webform node ID to get the tokens from.
+ *
+ * @return string
+ *   The replaced text.
+ */
+function webform_user_replace_tokens_in_component($value, $nid) {
+  $token_data = array('node' => node_load($nid));
+
+  return token_replace($value, $token_data, array('clear' => TRUE));
+}

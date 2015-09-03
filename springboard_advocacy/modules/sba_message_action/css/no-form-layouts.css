@@ -2,6 +2,15 @@
     clear: both;
 }
 
+#call-to-action-call {
+    font-weight: bold;
+    margin-bottom: 1em;
+}
+
+#call-to-action .field.field-name-body {
+    margin: 0;
+}
+
 #take-action-wrapper {
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
@@ -9,8 +18,10 @@
     width: 100%;
     border: 1px solid #d5d5d5;
     padding: 0 20px 20px ;
+    margin-bottom: 40px;
     border-radius: 4px;
 }
+
 #take-action-wrapper > legend{
     border:none;
     padding: 0 10px;
@@ -25,12 +36,11 @@
 #your-information-wrapper {
     clear: left;
     -webkit-box-sizing: border-box;
-  -moz-box-sizing: border-box;
-  box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
     padding-right: 20px;
-
-
 }
+
 #your-information-wrapper fieldset legend {
     font-size: 18px;
 }
@@ -40,7 +50,7 @@
     font-weight: bold;
 }
 
- #edit-actions {
+#edit-actions {
     clear:both;
     background-color: #fff;
     border-top: none;
@@ -48,7 +58,7 @@
     margin: 0;
 }
 
- #edit-actions input {
+#edit-actions input {
     width: 94.5%;
     background: #247AAD;
     border: none;
@@ -60,11 +70,11 @@
     text-shadow: none;
 }
 
- #edit-actions input:hover {
+#edit-actions input:hover {
     background: #1E72A3;
 }
 
- #sba-messages-form {
+#sba-messages-form {
     clear: both;
 }
 
@@ -72,11 +82,10 @@
     width: 20%;
     float: left;
     clear:none;
-    margin-top: 0px;
+    margin-top: 0;
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
     box-sizing: border-box;
-
 }
 
 #your-information-wrapper #webform-component-sbp-first-name.control-group,
@@ -89,6 +98,7 @@
     box-sizing: border-box;
     padding-left:10px;
 }
+
 #your-information-wrapper #webform-component-sbp-salutation.control-group select {
     width: 100%;
 }
@@ -164,4 +174,16 @@ textarea[id*="edit-sba-messages-message"] {
 
 fieldset[id*="edit-sba-messages-message"]  input[name*="subject"] {
     width: 95%;
+}
+
+form#sba-quicksign-form, #participants-container {
+    margin: 1.5em;
+}
+
+form#sba-quicksign-form {
+    margin-top: 0;
+}
+
+#participants-container table {
+    width: 100%;
 }

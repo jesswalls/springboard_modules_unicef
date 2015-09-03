@@ -7,9 +7,10 @@ dependencies[] = views
 
 configure = 'admin/config/services/advocacy'
 
-files[] = includes/springboard_advocacy.admin.inc
-files[] = includes/springboard_advocacy.webform.inc
 files[] = includes/springboard_advocacy.ApiClientLoader.inc
+files[] = includes/springboard_advocacy.ApiCall.inc
+files[] = includes/views/springboard_advocacy.views.inc
+files[] = includes/views/springboard_advocacy.views_default.inc
 files[] = includes/views/plugins/springboard_advocacy_views_plugin_query.inc
 files[] = includes/views/plugins/springboard_advocacy_views_plugin_pager.inc
 files[] = includes/views/handlers/springboard_advocacy_views_handler_field.inc

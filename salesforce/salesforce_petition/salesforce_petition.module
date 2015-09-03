@@ -36,23 +36,22 @@ function salesforce_petition_node_insert($node) {
   // If node is a springboard petition type.
   if ($node->type == 'springboard_petition') {
     // And if we have a default map. Salesforce petition default is -10.
+    // Only copy the map for fresh inserts. Webform user will handle clones.
     $nid = SALESFORCE_PETITION_DEFAULT_MAP_ID;
-    if (!empty($node->clone_from_original_nid)) {
-      $nid = $node->clone_from_original_nid;
+    if (empty($node->clone_from_original_nid)) {
+      $map = salesforce_genmap_load_map($nid, 'webform');
+      if (!empty($map)) {
+        // Copy the map to the node.
+        unset($map->mid);
+        $map->nid = $node->nid;
+        salesforce_genmap_save_map($map, 'webform');
+      }
     }
-    $map = salesforce_genmap_load_map($nid, 'webform');
-    if (!empty($map)) {
-      // Copy the map to the node.
-      unset($map->mid);
-      $map->nid = $node->nid;
-      salesforce_genmap_save_map($map, 'webform');
-    }
+    // Set the relationship from the submission to the contact.
+    $webform_user_reference_fields = variable_get('webform_user_reference_fields', array());
+    $webform_user_reference_fields[$node->nid] = 'Contact__c';
+    variable_set('webform_user_reference_fields', $webform_user_reference_fields);
   }
-
-  // Set the relationship from the submission to the contact.
-  $webform_user_reference_fields = variable_get('webform_user_reference_fields', array());
-  $webform_user_reference_fields[$node->nid] = 'Contact__c';
-  variable_set('webform_user_reference_fields', $webform_user_reference_fields);
 }
 
 /**

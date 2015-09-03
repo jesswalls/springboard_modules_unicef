@@ -84,7 +84,7 @@ function fundraiser_sustainers_admin_view($did) {
         $row[] = $this_donation->did;
       }
 
-      $row[] = $donation->donation['amount_formatted'];
+      $row[] = $this_donation->donation['amount_formatted'];
       $row[] = date('m/d/y', $this_donation->recurring->next_charge);
       if (arg(4) == 'recurring' && arg(6) == 'view') {
         $row[] = $this_donation->recurring->sustainer_key;

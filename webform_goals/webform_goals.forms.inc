@@ -245,7 +245,6 @@ function webform_goals_add($form, $form_state, $goal = array()) {
   );
   $form['#validate'][] = 'webform_goals_add_validate';
   $form['#submit'][] = 'webform_goals_add_submit';
-
   return $form;
 }
 

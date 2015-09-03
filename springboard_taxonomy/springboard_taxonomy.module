@@ -1,0 +1,141 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function springboard_taxonomy_menu() {
+  $items = array();
+  $items['admin/config/content/springboard-taxonomy'] = array(
+    'title' => 'Springboard Taxonomy',
+    'description' => 'Configuration settings for Springboard Taxonomy.',
+    'page callback' => 'springboard_taxonomy_settings_page',
+    'access arguments' => array('administer taxonomy'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'springboard_taxonomy.admin.inc',
+  );
+
+  return $items;
+}
+
+
+/**
+ * Implements hook_form_alter().
+ *
+ * Using hook_form_alter instead of hook_FORM_ID_alter so that
+ * springboard_taxonomy_taxonomy_form gets inserted before
+ * other modules' hook_FORM_ID_alter's add to it.
+ */
+function springboard_taxonomy_form_alter(&$form, &$form_state, $form_id) {
+  if (!empty($form['#node_edit_form'])) {
+    $taxonomy_types = variable_get('springboard_taxonomy_node_types', array());
+    if (in_array($form['#node']->type, $taxonomy_types) && isset($form['field_sba_organization_issues'])) {
+      springboard_taxonomy_taxonomy_form($form, $form_state, $form_id);
+    }
+  }
+}
+
+/**
+ * Adds a fieldset and issues terms to node add/edit forms' vertical tabs.
+ */
+function springboard_taxonomy_taxonomy_form(&$form, &$form_state, $form_id) {
+
+  $language = $form['language']['#value'];
+  // Add a vertical-tab fieldset for "Action options."
+  $form['springboard_taxonomy_options'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Organization issues'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+    '#group' => 'additional_settings',
+    '#weight' => -10,
+  );
+  // Include JS to layout long lists of checkboxes in columns.
+  drupal_add_js(drupal_get_path('module', 'springboard_taxonomy') . '/js/jquery.columnizer.min.js');
+  drupal_add_js(drupal_get_path('module', 'springboard_taxonomy') . '/js/springboard-taxonomy-edit-form.js');
+  // Include CSS for special layout.
+  drupal_add_css(drupal_get_path('module', 'springboard_taxonomy') . '/css/springboard-taxonomy-edit-form.css');
+
+  // Organization Issues selection.
+  if (isset($form['field_sba_organization_issues']) && !empty($form['field_sba_organization_issues'][$language])) {
+    $vocabulary = taxonomy_vocabulary_machine_name_load('sba_organization_issues');
+
+    $form['field_sba_organization_issues']['#sbt_vocab'] = $vocabulary;
+    $form['field_sba_organization_issues']['#pre_render'][] = 'springboard_taxonomy_sba_organization_issues_pre_render';
+    // Remove any leading dashes from option labels.
+    // (We'll indent them in the pre-render instead.)
+    $options =& $form['field_sba_organization_issues'][$language]['#options'];
+    foreach ($options as $tid => $label) {
+      $options[$tid] = preg_replace("/^\\-+/", '', $options[$tid]);
+    }
+
+    $description = t("Select the issues related to this action. These are your organization's issues, which can be used to generate feeds and lists of related actions in your action center and throughout your website.");
+    // Move the field to a special fieldset inside "Action options."
+    $form['springboard_taxonomy_options']['organization_issues'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Choose Organization Issue(s)'),
+      '#description' => $description,
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+    );
+
+    if (empty($options) && user_access('edit terms in ' . $vocabulary->vid)) {
+      $here = t('You can add terms !here.', array('!here' => l(t('here'), 'admin/structure/taxonomy/sba_organization_issues/add')));
+      $form['springboard_taxonomy_options']['organization_issues']['#description'] = $description . ' ' . $here;
+    }
+
+    $form['field_sba_organization_issues'][$language]['#title'] = '';
+    $form['springboard_taxonomy_options']['organization_issues']['field_sba_organization_issues']
+      = $form['field_sba_organization_issues'];
+    unset($form['field_sba_organization_issues']);
+  }
+}
+
+
+/**
+ * Add a CSS class to issues elements.
+ *
+ * @param array $element
+ *   A taxonomy term element array.
+ *
+ * @return array
+ *   The element with a new class attribute.
+ */
+function springboard_taxonomy_sba_organization_issues_pre_render(array $element) {
+  $vocabulary = $element['#sbt_vocab'];
+  // Add indentation class to non-top-tier org issue terms.
+  $terms = array();
+  foreach (taxonomy_get_tree($vocabulary->vid) as $term) {
+    $terms[$term->tid] = $term;
+  }
+  foreach ($element[$element['#language']]['#options'] as $tid => $name) {
+    if ($tid != '_none' && $terms[$tid]->depth > 0) {
+      $element[$element['#language']][$tid]['#attributes']['class'][] = 'sba-term-indent';
+    }
+  }
+  return $element;
+}
+
+/**
+ * Implements hook_field_delete_instance().
+ *
+ * Unset the springboard_taxonomy_node_types variable
+ * for the node type.
+ */
+function springboard_taxonomy_field_delete_instance($instance) {
+  $taxonomy_types = variable_get('springboard_taxonomy_node_types', array());
+  if ($instance['field_name'] == 'field_sba_organization_issues') {
+    if (isset($taxonomy_types[$instance['bundle']])) {
+      unset($taxonomy_types[$instance['bundle']]);
+      variable_set('springboard_taxonomy_node_types', $taxonomy_types);
+    }
+  }
+}
+
+function springboard_taxonomy_theme() {
+  return array(
+    'springboard_taxonomy_confirm_message' => array(
+      'variables' => array('changes' => NULL),
+      'file' => 'springboard_taxonomy.admin.inc',
+    ),
+  );
+}

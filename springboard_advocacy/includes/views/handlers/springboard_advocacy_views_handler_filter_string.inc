@@ -6,7 +6,9 @@
  * 
  */
 
-/*
+/**
+ * Class springboard_advocacy_views_handler_filter_string
+ *
  * Simplify and replace the query options provided by (the DB-oriented) parent class.
  */
 class springboard_advocacy_views_handler_filter_string extends views_handler_filter_string {
@@ -47,9 +49,11 @@ class springboard_advocacy_views_handler_filter_string extends views_handler_fil
       $this->{$info[$this->operator]['method']}($field);
     }
   }
-  
+
+
   /**
-   * This equals that.
+   * Override parent method.
+   * @param $field
    */
   function op_contains($field) {
     $this->query->search_terms[$field] = $this->value;

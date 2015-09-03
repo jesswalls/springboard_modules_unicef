@@ -8,14 +8,14 @@
 
 .sba-add-button.button:before {
     display: inline-block;
-    margin: 0px 8px 0px 0px;
+    margin: 0 8px 0 0;
     color: #FFF;
     content: "";
     font-family: FontAwesome;
 }
 
 #views-form-sba-messages-node-block-1 .tabledrag-toggle-weight-wrapper {
-    display: none;
+    text-align: left;
 }
 
 #views-exposed-form-sba-custom-targets-block-1 {

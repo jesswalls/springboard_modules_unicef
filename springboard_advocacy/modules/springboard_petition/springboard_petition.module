@@ -28,63 +28,11 @@ function springboard_petition_is_petition_type($type) {
 function springboard_petition_get_petition_types() {
   // For all types, check if they are a fundraiser type.
   $types = node_type_get_types();
+  $petition_types = array();
   foreach ($types as $type => $type_info) {
     $petition_types[$type] = variable_get('petition_' . $type, FALSE);
   }
   return $petition_types;
-}
-
-/**
- * Implements hook_node_insert().
- */
-function springboard_petition_node_insert($node) {
-  // If node is a petition type.
-  if (springboard_petition_is_petition_type($node->type)) {
-    // And if we have a default map.
-    $nid = -1;
-    if (!empty($node->clone_from_original_nid)) {
-      $nid = $node->clone_from_original_nid;
-    }
-    $webform_user_reference_fields = variable_get('webform_user_reference_fields', array());
-    $webform_user_reference_fields[$node->nid] = 'Contact__c';
-    variable_set('webform_user_reference_fields', $webform_user_reference_fields);
-    if (module_exists('salesforce_genmap')) {
-      $map = salesforce_genmap_load_map($nid, 'webform');
-      if (!empty($map)) {
-        // Copy the map to the node.
-        unset($map->mid);
-        $map->nid = $node->nid;
-        salesforce_genmap_save_map($map, 'webform');
-      }
-    }
-
-    // Handle goal settings as well.
-    if (module_exists('webform_goals')) {
-      springboard_petition_goal_save_submit($node);
-    }
-  }
-}
-
-/**
- * Implements hook_node_update().
- */
-function springboard_petition_node_update($node) {
-  if (module_exists('webform_goals')) {
-    springboard_petition_goal_save_submit($node);
-  }
-}
-
-/**
- * Implements hook_node_delete().
- *
- * Insert a copy of the default map when a Fundraiser node is created.
- */
-function springboard_petition_node_delete($node) {
-  // If node is a donation type.
-  if (springboard_petition_is_petition_type($node->type) && module_exists('salesforce_genmap')) {
-    salesforce_genmap_delete_map($node->nid, 'webform');
-    springboard_petition_goal_delete($node);
-  }
 }
 
 /**
@@ -112,7 +60,7 @@ function springboard_petition_form_webform_component_delete_form_alter(&$form, &
 }
 
 /**
- * Implements hook_form_FORM_ID_alter(). 
+ * Implements hook_form_FORM_ID_alter().
  */
 function springboard_petition_form_node_type_form_alter(&$form, $form_state) {
   $form_type = isset($form['type']['#default_value']) ? $form['type']['#default_value'] : FALSE;
@@ -121,122 +69,17 @@ function springboard_petition_form_node_type_form_alter(&$form, $form_state) {
   }
 }
 
-/**
- * Implements hook_form_FORM_ID_alter().
- */
-function springboard_petition_form_node_form_alter(&$form, $form_state) {
-  if (springboard_petition_is_petition_type($form['#node']->type) && module_exists('webform_goals')) {
-    $goal_config = variable_get('springboard_petition_goal_settings', array());
-    $gid = isset($form['#node']->nid) && isset($goal_config[$form['#node']->nid]) ? $goal_config[$form['#node']->nid] : FALSE;
-    $goal = !empty($gid) ? webform_goals_goal_retrieve($gid) : array();
-    $form['goal_settings'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Goal settings'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#group' => 'additional_settings',
-    );
-    $form['goal_settings']['springboard_petition_goal_id'] = array(
-      '#type' => 'value',
-      '#value' => $gid,
-    );
-    $form['goal_settings']['springboard_petition_goal_target'] = array(
-      '#type' => 'textfield',
-      '#title' => t('How many signatures are required to meet this goal?'),
-      '#default_value' => isset($goal['target_value']) ? $goal['target_value'] : '',
-    );
-    $form['goal_settings']['springboard_petition_goal_minimum'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Minimum number of signatures required to show progress.'),
-      '#default_value' => isset($goal['display_threshold']) ? $goal['display_threshold'] : '',
-    );
-    $form['goal_settings']['springboard_petition_starter_message'] = array(
-      '#type' => 'textarea',
-      '#title' => t('Starter message'),
-      '#description' => t('This message is displayed when minimum goal progress has not been met.'),
-      '#default_value' => isset($goal['starter_message']) ? $goal['starter_message'] : '',
-    );
-    $form['#validate'][] = 'springboard_petition_goal_save_validate';
-    // Actual submission is handled in hook_node_insert and hook_node_update.
-    // This ensures that a node id is present whenever we act on a form
-    // submission, a condition that is not guaranteed if we rely on hook_form_alter().
-  }
-}
 
 /**
- * Form validation callback for petition goal settings fieldset.
+ * Auxiliary petition submit function.
+ *
+ * @param $form
+ * @param $form_state
  */
-function springboard_petition_goal_save_validate(&$form, $form_state) {
-  // Goal target is NaN
-  if (!empty($form_state['values']['springboard_petition_goal_target']) && !is_numeric($form_state['values']['springboard_petition_goal_target'])) {
-    form_set_error('springboard_petition_goal_target', t('Target number of submissions must be a number.'));
-  }
-  // Goal minimum is NaN
-  if (!empty($form_state['values']['springboard_petition_goal_minimum']) && !is_numeric($form_state['values']['springboard_petition_goal_minimum'])) {
-    form_set_error('springboard_petition_goal_minimum', t('Minimum number of submissions must be a number.'));
-  } 
-  // Missing goal target but other settings are present.
-  if (empty($form_state['values']['springboard_petition_goal_target']) && (!empty($form_state['values']['springboard_petition_goal_minimum']) || !empty($form_state['values']['springboard_petition_starter_message']))) {
-    form_set_error('springboard_petition_goal_target', t('Please include number of signatures required to meet this goal.'));
-  }
-  // Display minimum is larger than the target
-  if (!empty($form_state['values']['springboard_petition_goal_target']) && !empty($form_state['values']['springboard_petition_goal_minimum'])) {
-    if ($form_state['values']['springboard_petition_goal_target'] <= $form_state['values']['springboard_petition_goal_minimum']) {
-      form_set_error('springboard_petition_goal_minimum', t('The display minimum supplied would prevent goal progress from ever being displayed. Please supply a value that is less than the target number of submissions.'));
-    }
-  }
-}
-
-/**
- * Save petition goal settings. 
- */
-function springboard_petition_goal_save_submit($node) {
-  if (!empty($node->springboard_petition_goal_target)) {
-    $settings = array(
-      'gid' => isset($node->springboard_petition_goal_id) ? $node->springboard_petition_goal_id : '',
-      'name' => 'Springboard petition goal for node ' . $node->nid,
-      'context' => 'single',
-      'metric' => 'submission_count',
-      'extra' => array('selected_form_id' => $node->nid),
-      'display_threshold' => $node->springboard_petition_goal_minimum,
-      'seed' => 0,
-      'target_value' => $node->springboard_petition_goal_target,
-      'starter_message' => $node->springboard_petition_starter_message,
-      'starter_message_format' => 'filtered_html',
-      'start_date' => 0,
-      'end_date' => 0,
-      'template' => '[goal:progress-starter]
-<p>The current goal is [goal:target]. We have [goal:total] thus far. That’s nearly [goal:progress-percent]% of our goal! Thanks for your support.</p>', // we may need configurable global defaults here.
-      'template_format' => 'full_html', // and here,
-      'progress_bar' => 'flat_ui', // and here.
-    );
-    $goal = $settings['gid'] ? webform_goals_goal_update($settings) : webform_goals_goal_create($settings);
-    $goal_settings = variable_get('', array());
-    $goal_settings[$node->nid] = $goal['gid'];
-    variable_set('springboard_petition_goal_settings', $goal_settings);
-  }
-  elseif (!empty($node->springboard_petition_goal_id)) {
-    // Node updated with no goal target, delete goal if exists.
-    springboard_petition_goal_delete($node);
-  }
-}
-
-/**
- * Delete goal settings.
- */
-function springboard_petition_goal_delete($node) {
-  $goal_config = variable_get('springboard_petition_goal_settings', array());
-  $gid = isset($goal_config[$node->nid]) ? $goal_config[$node->nid] : FALSE;
-  if ($gid) {
-    unset($goal_config[$node->nid]);
-    variable_set('springboard_petition_goal_settings', $goal_config);
-    webform_goals_goal_delete($gid);
-  }
-}
-
 function springboard_petition_node_type_submit($form, $form_state) {
   if (isset($form_state['values']['webform_user']) && $form_state['values']['webform_user'] == 1) {
-    // Prevent webform user from overwriting the signature opt-in field when field configuration is changed.
+    // Prevent webform user from overwriting the signature opt-in field
+    // when field configuration is changed.
     if (isset($form_state['values']['webform_user_default_fields'])) {
       $default_fields = variable_get('webform_user_default_fields_springboard_petition', '');
       $default_fields[] = 'sbp_rps_optin';
@@ -262,7 +105,7 @@ function springboard_petition_form_alter(&$form, $form_state, $form_id) {
  * Submit callback for petition webforms, tracks user opt-in.
  */
 function springboard_petition_petition_submit($form, $form_state) {
-  $submission_fields = _fundraiser_webform_submission_flatten($form['#node']->nid, $form_state['values']['submitted_tree']);
+  $submission_fields = _springboard_advocacy_webform_submission_flatten($form['#node']->nid, $form_state['values']['submitted_tree']);
   $opt_in = count($submission_fields['sbp_rps_optin']) ? TRUE : FALSE;
   $uid = _springboard_petition_get_uid_from_sid($form_state['values']['details']['sid']);
   if ($opt_in) {
@@ -272,7 +115,7 @@ function springboard_petition_petition_submit($form, $form_state) {
 }
 
 /**
- * Implements hook_views_api(). From Views module.
+ * Implements hook_views_api().
  */
 function springboard_petition_views_api() {
   return array(
@@ -303,7 +146,7 @@ function springboard_petition_webform_user_profile_fields_alter(&$fields, $node)
       'type' => 'list_boolean',
       'mandatory' => 0,
       'weight' => 0,
-      'explanation' => t(''),
+      'explanation' => '',
       'options' => array(0, 1),
       'category_key' => NULL,
       'category_name' => NULL,
@@ -332,15 +175,15 @@ function springboard_petition_token_info() {
  * Implements hook_tokens().
  */
 function springboard_petition_tokens($type, $tokens, array $data = array(), array $options = array()) {
+  $replacements = array();
   if ($type == 'springboard_petition') {
-    $replacements = array();
     foreach ($tokens as $key => $token) {
-      if ($key == 'recent_signers') {
-        $replacements[$token] = views_embed_view('recent_petiton_signers');
+      if ($key == 'recent_signers' && !empty($data['node']->nid)) {
+        $replacements[$token] = views_embed_view('recent_petition_signatures', 'default', $data['node']->nid);
       }
     }
-    return $replacements;
   }
+  return $replacements;
 }
 
 /**
@@ -348,15 +191,15 @@ function springboard_petition_tokens($type, $tokens, array $data = array(), arra
  *
  * @param int $nid
  *   Node ID.
- *
  * @param int $uid
  *   User ID.
- *
- * @param boolean $opt_in
- *   User opt in TRUE/FALSE
+ * @param bool $opt_in
+ *   User opt in TRUE/FALSE.
+ * @param int $sid
+ *   Submission ID.
  */
 function springboard_petition_log_opt_in($nid, $uid, $opt_in, $sid) {
-  $query = db_delete('springboard_petition_opt_in')
+  db_delete('springboard_petition_opt_in')
     ->condition('sid', $sid, '=')
     ->execute();
 

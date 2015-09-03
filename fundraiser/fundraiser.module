@@ -1868,13 +1868,14 @@ function fundraiser_donation_create($donation) {
   else {
     $form_url = $base_url . '/node/' . $donation->nid;
   }
+
   $donation_record = array(
     'did' => $donation->did, // Donation id.
     'nid' => $donation->nid, // Fundraiser node id.
     'uid' => $donation->uid, // Submission user id.
     'sid' => $donation->sid, // Submission id.
     'status' => $donation->status,
-    'amount' => $donation->donation['amount'],
+    'amount' => $donation->amount,
     'currency' => $donation->currency,
     'txn_id' => '',
     'form_url' => $form_url,
@@ -1975,8 +1976,21 @@ function _fundraiser_donation_copy($donation) {
  * Donation processing, a given donation needs to be processed.
  */
 function fundraiser_donation_process($donation) {
+  // Create an array of values for the log.
+  $log = array(
+    'start' => microtime(TRUE),
+    'transaction_type' => 'charge',
+  );
+
   // Pass this down to the processing module.
   module_invoke_all('fundraiser_donation_process', $donation);
+
+  // Mark the end time of the processing.
+  $log['end'] = microtime(TRUE);
+
+  // Log the processing details.
+  fundraiser_log_donation_processing($donation, $log);
+
   // And save the donation as it is at this stage since it was created.
   // This makes sure that any changes made stay in place.
   fundraiser_donation_update($donation, FALSE);
@@ -2207,31 +2221,46 @@ function fundraiser_show_refund_form($did) {
  */
 function _fundraiser_refund_form($form, &$form_state, $did) {
   $form = array();
+
   // Given a donation ID, grab all relevant information to create the form.
   $donation = fundraiser_donation_get_donation($did);
-  $form['#donation'] = $form_state['#donation'] = $donation;
+  $form_state['donation_id'] = $donation->did;
+
   $form['payment_summary'] = array(
     '#type' => 'fieldset',
     '#title' => t('Payment Summary'),
     '#collapsible' => FALSE,
     '#collapsed' => FALSE,
   );
+
+  // Since we'll be doing math on these numbers we'll use the whole number values.
+  $order_wrapper = entity_metadata_wrapper('commerce_order', commerce_order_load($donation->did));
+  $order_total = $order_wrapper->commerce_order_total->value();
+
+  $donation_amount = $order_total['amount'];
   $refund_summary = array();
   $refunded_total = 0;
+
   if (is_array($donation->refunds)) {
     foreach ($donation->refunds as $refund) {
-      $refunded_total += abs($refund->amount);
-      $refund_summary[] = t('Refund #%id for $%amount on %date.',
+      // Convert the refunded amount to a whole number.
+      $refund_amount = commerce_currency_decimal_to_amount($refund->amount, $donation->currency);
+      $refunded_total += $refund_amount;
+      $refund_summary[] = t('Refund #%id for %amount on %date.',
         array(
-        '%id' => $refund->did,
-        '%amount' => abs($refund->amount),
-        '%date' => date('m/d/y', isset($refund->created) ? $refund->created : 0),
-      )
-      ); //TODO fix up value display for international.
+          '%id' => $refund->did,
+          '%amount' => commerce_currency_format($refund_amount, $donation->currency),
+          '%date' => date('m/d/y', isset($refund->created) ? $refund->created : 0),
+        )
+      );
     }
+
     $refund_summary = !empty($refund_summary) ? theme('item_list', array('items' => $refund_summary)) : t('No refunds have been made.');
-    $refunded_total = $refunded_total;
   }
+
+  // Set the able to refund value from the donation amount.
+  $able_to_refund = $donation_amount - $refunded_total;
+
   // Display form.
   if ($donation->refunds == FALSE) {
     $form['payment_summary']['no_payments'] = array(
@@ -2244,12 +2273,12 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
   $form['payment_summary']['payment_total'] = array(
     '#type' => 'item',
     '#title' => t('Payment Total'),
-    '#markup' => $donation->donation['amount'],
+    '#markup' => $donation->donation['amount_formatted'],
   );
   $form['payment_summary']['refunded_total'] = array(
     '#type' => 'item',
     '#title' => t('Refunded Total'),
-    '#markup' => $refunded_total,
+    '#markup' => commerce_currency_format($refunded_total, $donation->currency),
   );
   if (!empty($refund_summary)) {
     $form['payment_summary']['refunded_summary'] = array(
@@ -2258,6 +2287,7 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
       '#markup' => $refund_summary,
     );
   }
+
   // Form for submitting a refund.
   $form['refund_options'] = array(
     '#type' => 'fieldset',
@@ -2268,13 +2298,14 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
     '#collapsible' => FALSE,
     '#collapsed' => FALSE,
   );
+
   // Only show the refund form if the payment was made through a payment gateway that can handle refunds
   if (isset($donation->gateway)) { // Set during fundraiser_donation_get_donation().
     $can_refund = FALSE;
     if (!empty($donation->gateway['allow_refund']) && in_array($donation->donation['payment_method'], $donation->gateway['allow_refund'])) {
       $can_refund = TRUE;
     }
-    $able_to_refund = $donation->donation['amount'] - $refunded_total;
+
     if (!$can_refund || $able_to_refund <= 0) {
       // They've made a payment, but it cannot be refunded
       if ($able_to_refund <= 0) {
@@ -2302,14 +2333,22 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
     }
     // Provide refund options
     else {
+      $form['able_to_refund'] = array(
+        '#type' => 'value',
+        '#value' => $able_to_refund,
+      );
+      $form['refunded_total'] = array(
+        '#type' => 'value',
+        '#value' => $refunded_total,
+      );
       $form['refund_options']['refund_type'] = array(
         '#title' => t('Refund options'),
         '#type' => 'radios',
         '#options' => array(
-          'full' => t('Full Refund ( %amount )', array('%amount' => $able_to_refund . ' ' . $donation->currency)),
+          'full' => t('Full Refund ( %amount )', array('%amount' => commerce_currency_format($able_to_refund, $donation->currency))),
           'partial' => t('Partial Refund'),
         ),
-        '#default_value' => isset($form_state['input']['refund_type']) ? $form_state['input']['refund_type'] : 'full',
+        '#default_value' => 'full',
       );
       $form['refund_options']['amount'] = array(
         '#type' => 'textfield',
@@ -2321,7 +2360,6 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
             ':input[name="refund_type"]' => array('value' => 'partial'),
           ),
         ),
-        '#required' => TRUE,
       );
       $form['refund_options']['refund_notes'] = array(
         '#type' => 'textarea',
@@ -2336,14 +2374,6 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
         '#value' => t('Issue Refund'),
         '#required' => TRUE,
       );
-      $form['able_to_refund'] = array(
-        '#type' => 'hidden',
-        '#value' => number_format($able_to_refund, 2),
-      );
-      $form['refunded_total'] = array(
-        '#type' => 'hidden',
-        '#value' => number_format($refunded_total, 2),
-      );
     }
   }
   else {
@@ -2353,6 +2383,7 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
       '#suffix' => '</strong>',
     );
   }
+
   return $form;
 }
 
@@ -2360,34 +2391,49 @@ function _fundraiser_refund_form($form, &$form_state, $did) {
  * Validate the form
  */
 function _fundraiser_refund_form_validate($form, &$form_state) {
-  // Dunno why, but values isn't picking it up.
-  $form_state['values'] = isset($form_state['input']) ? $form_state['input'] : $form_state['values'];
   // Get the donation.
-  $donation = $form['#donation'];
-  // If it isn't a full refund, make sure they entered a valid value
+  $donation = fundraiser_donation_get_donation($form_state['donation_id']);
+
+  // Variables for tracking the refund type and amounts.
   $refund_type = $form_state['values']['refund_type'];
+  $able_to_refund = $form_state['values']['able_to_refund'];
+  $refund_amount = 0;
+
   if (empty($refund_type)) {
     form_set_error('refund_type', t('Select a type for the refund.'));
   }
+
+  // A full refund uses the $able_to_refund amount, a partial refund needs to validate the entered amount.
   if ($refund_type != 'full') {
-    $amount = (float) $form_state['values']['amount'];
+    // Convert the entered amount to a whole number.
+    $amount = commerce_currency_decimal_to_amount(_fundraiser_amount_value_sanitize($form_state['values']['amount']), $donation->currency);
+
     if ($amount <= 0) {
       form_set_error('amount', t('Enter a positive numerical refund amount.'));
     }
     else {
-      $refunded_total = (float) $form_state['values']['refunded_total'];
-      // Determine how much has been paid, less previous refunds
-      $able_to_refund = $donation->donation['amount'] - $refunded_total;
+      // Check if the amount set to refund is less than the amount left to refund.
       if ($amount > $able_to_refund) {
         $context = array(
           'revision' => 'formatted-original',
           'type' => 'amount',
         );
         form_set_error('amount', t('The refund amount entered is too high. Only @paid in payments have been made, and no ' .
-          'more than that can be refunded.', array('@paid' => $able_to_refund)));
+          'more than that can be refunded.', array('@paid' => commerce_currency_format($able_to_refund, $donation->currency))));
+      }
+      else {
+        // Add the amount to refund to the form_state values.
+        $refund_amount = $amount;
       }
     }
   }
+  else {
+    // Add the full amount to the form_state values.
+    $refund_amount = $able_to_refund;
+  }
+
+  $form_state['values']['refund_amount'] = commerce_currency_amount_to_decimal($refund_amount, $donation->currency);
+
   $refund_notes = $form_state['values']['refund_notes'];
   if (empty($refund_notes)) {
     form_set_error('refund_notes', t('Please enter a reason for the refund.'));
@@ -2399,31 +2445,14 @@ function _fundraiser_refund_form_validate($form, &$form_state) {
  */
 function _fundraiser_refund_form_submit($form, &$form_state) {
   // Get the donation.
-  $donation = $form['#donation'];
-  // Determine how much has been paid, less previous refunds
-  $refunded_total = (float) $form_state['values']['refunded_total'];
-  $able_to_refund = $donation->donation['amount'] - $refunded_total;
-  // Partial refund
-  if ($form_state['values']['refund_type'] != 'full') {
-    $amount = (float) $form_state['values']['amount'];
-    $new_status = 'partially_refunded';
-    // Can't refund more than they've paid
-    // Use >= so that the status is set properly if they choose Partial Refund.
-    if ($amount >= $able_to_refund) {
-      $amount = $able_to_refund;
-      $new_status = 'refunded';
-    }
-  }
-  // Full refund
-  else {
-    $amount = $able_to_refund;
-    $new_status = 'refunded';
-  }
+  $donation = fundraiser_donation_get_donation($form_state['donation_id']);
+
+  $new_status = 'refunded';
 
   // Set up the refund.
   $refund = new stdClass();
   $refund->did = $donation->did;
-  $refund->amount = $amount;
+  $refund->amount = $form_state['values']['refund_amount'];
   $refund->currency = $donation->currency;
   $refund->reason = $form_state['values']['refund_notes'];
   $refund = fundraiser_refund_create($refund);
@@ -3150,8 +3179,8 @@ function fundraiser_webform_token_selector_blacklist_alter(&$tokens) {
  */
 function fundraiser_get_total_donations_by_nids($nids, $start = FALSE, $end = FALSE) {
   $total_donations = module_invoke_all('fundraiser_get_total_donations_by_nids', $nids, $start, $end);
-  // Use the first implementation called.  There should only be one anyway.
-  return $total_donations[0];
+  $total = isset($total_donations[0]) ? $total_donations[0] : FALSE;
+  return $total;
 }
 
 /**
@@ -3469,4 +3498,71 @@ function fundraiser_springboard_admin_admin_menu_items_alter(&$items) {
     'customized' => 1,
     'weight' => 0,
   );
+}
+
+/**
+ * Log that a donation has processed and some other details for Log Analysis.
+ *
+ * @param object $donation
+ *   The donation object.
+ * @param array $log
+ *   Additional log details, should include start/end times, and the type of transaction: charge, refund.
+ */
+function fundraiser_log_donation_processing($donation, $log = array()) {
+  // Calculate the execution time.
+  $exec_time = round($log['end'] - $log['start'], 4);
+
+  // Setup the gateway details, the gateway name and config (rule name) are contained in the id.
+  list($gateway, $gateway_config) = explode('|', $donation->gateway['id']);
+
+  $pieces = array(
+    'datetime',
+    'category',
+    'unique_transaction_id',
+    'client_identifier',
+    'payment_gateway',
+    'payment_gateway_config',
+    'transaction_type',
+    'transaction_total_exec_time',
+    'donation_value',
+    'donation_currency',
+    'country',
+    'origin_ip',
+    'success',
+    'reference_charge',
+  );
+
+  $message = '|%' . implode('|%', $pieces);
+
+  $variables = array(
+    '%datetime' => date('c', $log['start']),
+    '%category' => 'INFO',
+    '%unique_transaction_id' => $donation->did,
+    '%client_identifier' => $donation->uid,
+    '%payment_gateway' => $gateway,
+    '%payment_gateway_config' => $gateway_config,
+    '%transaction_type' => $log['transaction_type'],
+    '%transaction_total_exec_time' => $exec_time,
+    '%donation_value' => !empty($donation->donation['amount']) ? $donation->donation['amount'] : '0.00',
+    '%donation_currency' => !empty($donation->donation['currency']['code']) ? $donation->donation['currency']['code'] : 'N/A',
+    '%country' => !empty($donation->donation['country']) ? $donation->donation['country'] : 'N/A',
+    '%origin_ip' => ip_address(),
+    '%success' => isset($donation->result['success']) ? (int) $donation->result['success'] : 0,
+    '%reference_charge' => isset($donation->reference_charge) ? (int) $donation->reference_charge : 0,
+  );
+
+  watchdog('fundraiser_donation_tracker', $message, $variables, WATCHDOG_INFO);
+}
+
+/**
+ * Clean up the input for an amount field.
+ *
+ * @param string $amount
+ *   The amount entered from the submission.
+ *
+ * @return string
+ *   The input amount stripped of any values other than a decimal point.
+ */
+function _fundraiser_amount_value_sanitize($amount) {
+  return preg_replace('/[^\d\.]/i', '', $amount);
 }

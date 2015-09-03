@@ -41,7 +41,7 @@
         var ac = this;
         if(this.db.uri.indexOf('message-action') != -1) {
 
-            var message = matches[Object.keys(matches)[Object.keys(matches).length - 1]]
+            var message = matches[Object.keys(matches)[Object.keys(matches).length - 1]];
             delete matches[Object.keys(matches)[Object.keys(matches).length - 1]]
         }
 
@@ -82,9 +82,9 @@
 
         //this is the extent of the change
         if(db.uri.indexOf('message-action') != -1) {
-            var chamber = $('#edit-search-committee-chamber-wrapper select').val();
+            var chamber = $('select', '#edit-search-committee-chamber-wrapper').val();
             var state = $("#edit-search-state").val();
-            searchString = searchString + "/" +  state + "/" + chamber
+            searchString = searchString + "/" +  state + "/" + chamber;
             this.searchString = searchString;
         }
 

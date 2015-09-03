@@ -7,7 +7,6 @@
 /**
  * Implements hook_views_default_views().
  */
-
 function springboard_target_views_default_views() {
 
   $view = new view();
@@ -551,6 +550,6 @@ function springboard_target_views_default_views() {
 
   $views[$view->name] = $view;
 
-// Return all the views.
+  // Return all the views.
   return $views;
 }

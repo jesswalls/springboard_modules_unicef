@@ -7,11 +7,11 @@
 /**
  * Implements hook_schema().
  *
- * Table to save unique action IDs
+ * Table to save confirmations.
  */
 function sba_message_action_schema() {
 
-  // Store a unique ID for use with advocacy server
+  // Store a unique ID for use with advocacy server.
   $schema['sba_message_action_confirm'] = array(
     'description' => 'Store message action confirmation state.',
     'fields' => array(
@@ -35,6 +35,77 @@ function sba_message_action_schema() {
     ),
     'primary key' => array('nid'),
   );
+
+  // Opt in tracking table.
+  $schema['springboard_action_opt_in'] = array(
+    'description' => 'Store message action optin.',
+    'fields' => array(
+      'sid' => array(
+        'description' => 'Webform submission id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'nid' => array(
+        'description' => 'Message action node id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'uid' => array(
+        'description' => 'Signer user id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'opt_in' => array(
+        'description' => 'Track user opt-in to show their signature per message action.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'description' => 'Submission timestamp',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('sid'),
+  );
+
+  // Opt in tracking table.
+  $schema['springboard_action_opt_in_block'] = array(
+    'description' => 'Store message action optin.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'Message action node id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'visibility' => array(
+        'description' => 'Track user opt-in to show their signature per message action.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+
+  $schema['cache_deliverability_report'] = drupal_get_schema_unprocessed('system', 'cache');
+  $schema['cache_deliverability_report']['description'] = 'Cache table for deliverability information about specific message action nodes.';
+  $schema['cache_deliverability_target'] = drupal_get_schema_unprocessed('system', 'cache');
+  $schema['cache_deliverability_target']['description'] = 'Cache table for deliverability information about specific message action targets.';
+
   return $schema;
 }
 
@@ -42,812 +113,13 @@ function sba_message_action_schema() {
  * Implements hook_install().
  */
 function sba_message_action_install() {
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install');
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_taxonomy');
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_examples');
+
   _sba_message_action_create_content_type();
-  _sba_message_action_reorder_internal_name();
+  _sba_message_action_install_vocab_sba_legislative_issues();
   _sba_message_action_create_example_message_action();
-  _springboard_message_action_install_taxonomy_fields();
-
-}
-
-/**
- * Creates the sba_message_action content type.
- */
-function _sba_message_action_create_content_type() {
-  $type = node_type_set_defaults();
-  $type->name = t('Message Action');
-  $type->type = 'sba_message_action';
-  $type->description = '';
-  $type->title_label = t('Title');
-  $type->has_title = TRUE;
-  $type->base = 'node_content';
-  $type->custom = TRUE;
-  $type->modified = TRUE;
-  $type->module = 'sba_message_action';
-
-  // Save or reset persistent variable values.
-  _sba_message_action_set_vars();
-
-  node_type_save($type);
-  node_types_rebuild();
-
-  //node_add_body_field($type, 'Message Body');
-  _sba_message_action_create_node_fields();
-  _sbp_message_action_create_user_profile_fields();
-
-  require_once(drupal_get_path('module', 'webform_user') . '/includes/webform_user.fields.inc');
-  _webform_user_add_default_fields('sba_message_action');
-
-  drupal_set_message(t('The content type Springboard Message Action has been added.'));
-  watchdog('sba_message_action', 'Added content type Springboard Message Action.');
-
-  // Weighting the module to ensure submission handlers run after Webform User.
-  // This ensures that the user id in webform_submissions has been updated by
-  // Webform User before we get to it.
-  db_query('UPDATE {system} SET weight = :weight WHERE name = :name', array(':weight' => 1000, ':name' => 'sba_message_action'));
-}
-
-function _sba_message_action_set_vars() {
-
-  $variables = array(
-    'additional_settings__active_tab' => 'edit-webform-user',
-    'field_bundle_settings_node_' => array(),
-    'menu_parent' => 'main-menu:0',
-    'menu_options' => array(
-      0 => 'main-menu',
-    ),
-    'node_submitted' => 0,
-    'node_preview' => 1,
-    'node_options' => array(),
-    'fundraiser' => 0,
-    'webform_user' => 1,
-    'webform_user_default_fields' => array(
-      'sbp_salutation' => 'sbp_salutation',
-      'sbp_first_name' => 'sbp_first_name',
-      'sbp_last_name' => 'sbp_last_name',
-      'mail' => 'mail',
-      'sbp_address' => 'sbp_address',
-      'sbp_address_line_2' => 'sbp_address_line_2',
-      'sbp_city' => 'sbp_city',
-      'sbp_state' => 'sbp_state',
-      'sbp_zip' => 'sbp_zip',
-      'sbp_phone' => 'sbp_phone',
-      'sbp_cid' => 'sbp_cid',
-      'sbp_market_source' => 'sbp_market_source',
-      'sbp_referrer' => 'sbp_referrer',
-      'sbp_initial_referrer' => 'sbp_initial_referrer',
-      'sbp_search_engine' => 'sbp_search_engine',
-      'sbp_search_string' => 'sbp_search_string',
-      'sbp_user_agent' => 'sbp_user_agent',
-      'sbp_salesforce_account_id' => 'sbp_salesforce_account_id',
-      'sbp_salesforce_contact_id' => 'sbp_salesforce_contact_id',
-    ),
-  );
-  foreach ($variables as $key => $value) {
-    $variable_new = $key . '_sba_message_action';
-    if (is_array($value)) {
-      $value = array_keys(array_filter($value));
-    }
-    variable_set($variable_new, $value);
-  }
-
-  // Add as a webform.
-  $webform_node_types = variable_get('webform_node_types', array('webform'));
-  $webform_node_types_primary = variable_get('webform_node_types_primary', array('webform'));
-  $webform_node_types = array_merge($webform_node_types, array('sba_message_action'));
-  $webform_node_types_primary = array_merge($webform_node_types_primary, array('sba_message_action'));
-  variable_set('webform_node_types', array_unique($webform_node_types));
-  variable_set('webform_node_types_primary', array_unique($webform_node_types_primary));
-
-  //enable form_layuts
-  variable_set('form_layouts_sba_message_action', 1);
-  //default confirmation message.
-  //variable_set('sba_message_action_confirm', 'Thank you, %value[sbp_first_name] for participating in the messaging campaign.' . "\n\n" . '[action:recipients]');
-  variable_set('sba_message_action_confirm', '');
-
-  // Add as an advocacy message type.
-  $sba_action_types = variable_get('sba_action_types', array(''));
-  $sba_action_types = array_merge($sba_action_types, array('sba_message_action'));
-  variable_set('sba_action_types', array_unique($sba_action_types));
-}
-
-function _sba_message_action_create_node_fields($update = false) {
-
-  $fields = array(
-    'field_message_action_img' => array(
-      'active' => 1,
-      'cardinality' => 1,
-      'deleted' => 0,
-      'entity_types' => array('node'),
-      'field_name' => 'field_message_action_img',
-      'foreign keys' => array(
-        'fid' => array(
-          'columns' => array(
-            'fid' => 'fid',
-          ),
-          'table' => 'file_managed',
-        ),
-      ),
-      'indexes' => array(
-        'fid' => array(
-          0 => 'fid',
-        ),
-      ),
-      'locked' => 0,
-      'module' => 'image',
-      'settings' => array(
-        'default_image' => 0,
-        'uri_scheme' => 'public',
-      ),
-      'translatable' => 0,
-      'type' => 'image',
-
-      '_instance' => array(
-        'bundle' => 'sba_message_action',
-        'deleted' => 0,
-        'description' => '',
-        'display' => array(
-          'default' => array(
-            'label' => 'hidden',
-            'module' => 'image',
-            'settings' => array(
-              'image_link' => '',
-              'image_style' => '',
-            ),
-            'type' => 'image',
-            'weight' => -1,
-          ),
-          'teaser' => array(
-            'label' => 'above',
-            'settings' => array(),
-            'type' => 'hidden',
-            'weight' => 0,
-          ),
-        ),
-        'entity_type' => 'node',
-        'field_name' => 'field_message_action_img',
-        'label' => 'Image',
-        'required' => 0,
-        'settings' => array(
-          'alt_field' => 1,
-          'default_image' => 0,
-          'file_directory' => '',
-          'file_extensions' => 'png gif jpg jpeg',
-          'max_filesize' => '',
-          'max_resolution' => '',
-          'min_resolution' => '',
-          'title_field' => 0,
-          'user_register_form' => FALSE,
-        ),
-        'widget' => array(
-          'active' => 1,
-          'module' => 'image',
-          'settings' => array(
-            'preview_image_style' => 'thumbnail',
-            'progress_indicator' => 'throbber',
-          ),
-          'type' => 'image_image',
-          'weight' => 0,
-        ),
-      ),
-    ),
-  );
-
-
-  $fields['body'] = array(
-    'active' => 1,
-    'cardinality' => 1,
-    'deleted' => 0,
-    'entity_types' => array(
-      0 => 'node',
-    ),
-    'field_name' => 'body',
-    'foreign keys' => array(
-      'format' => array(
-        'columns' => array(
-          'format' => 'format',
-        ),
-        'table' => 'filter_format',
-      ),
-    ),
-    'indexes' => array(
-      'format' => array(
-        0 => 'format',
-      ),
-    ),
-    'locked' => 0,
-    'module' => 'text',
-    'settings' => array(),
-    'translatable' => 0,
-    'type' => 'text_with_summary',
-    '_instance' => array(
-      'bundle' => 'sba_message_action',
-      'default_value' => NULL,
-      'deleted' => 0,
-      'description' => '',
-      'display' => array(
-        'default' => array(
-          'label' => 'hidden',
-          'module' => 'text',
-          'settings' => array(),
-          'type' => 'text_default',
-          'weight' => 5,
-        ),
-        'teaser' => array(
-          'label' => 'hidden',
-          'module' => 'text',
-          'settings' => array(
-            'trim_length' => 600,
-          ),
-          'type' => 'text_summary_or_trimmed',
-          'weight' => 5,
-        ),
-      ),
-      'entity_type' => 'node',
-      'field_name' => 'body',
-      'label' => 'Body',
-      'required' => 1,
-      'settings' => array(
-        'display_summary' => 1,
-        'text_processing' => 1,
-        'user_register_form' => FALSE,
-      ),
-      'widget' => array(
-        'active' => 1,
-        'module' => 'text',
-        'settings' => array(
-          'rows' => 20,
-          'summary_rows' => 5,
-        ),
-        'type' => 'text_textarea_with_summary',
-        'weight' => 5,
-      ),
-    )
-
-);
-
-  // Exported field_base: 'field_message_call_to_action'
-  $fields['field_message_call_to_action'] = array(
-    'active' => 1,
-    'cardinality' => 1,
-    'deleted' => 0,
-    'entity_types' => array(),
-    'field_name' => 'field_message_call_to_action',
-    'foreign keys' => array(
-      'format' => array(
-        'columns' => array(
-          'format' => 'format',
-        ),
-        'table' => 'filter_format',
-      ),
-    ),
-    'indexes' => array(
-      'format' => array(
-        0 => 'format',
-      ),
-    ),
-    'locked' => 0,
-    'module' => 'text',
-    'settings' => array(
-      'max_length' => 255,
-    ),
-    'translatable' => 0,
-    'type' => 'text',
-    '_instance' => array(
-      'bundle' => 'sba_message_action',
-      'default_value' => NULL,
-      'deleted' => 0,
-      'description' => '',
-      'display' => array(
-        'default' => array(
-          'label' => 'none',
-          'module' => 'text',
-          'settings' => array(),
-          'type' => 'text_default',
-          'weight' => 4,
-        ),
-        'teaser' => array(
-          'label' => 'none',
-          'settings' => array(),
-          'type' => 'hidden',
-          'weight' => 4,
-        ),
-      ),
-      'entity_type' => 'node',
-      'field_name' => 'field_message_call_to_action',
-      'label' => 'Call to Action',
-      'required' => 0,
-      'settings' => array(
-        'text_processing' => 0,
-        'user_register_form' => FALSE,
-      ),
-      'widget' => array(
-        'active' => 1,
-        'module' => 'text',
-        'settings' => array(
-          'size' => 60,
-        ),
-        'type' => 'text_textfield',
-        'weight' => 4,
-      ),
-    )
-  );
-
-  $fields['field_sba_test_mode'] = array(
-    'active' => 1,
-    'cardinality' => 2,
-    'deleted' => 0,
-    'entity_types' => array(),
-    'field_name' => 'field_sba_test_mode',
-    'foreign keys' => array(),
-    'indexes' => array(
-      'value' => array(
-        0 => 'value',
-      ),
-    ),
-    'locked' => 0,
-    'module' => 'list',
-    'settings' => array(
-      'allowed_values' => array(
-        1 => 'Enabled',
-      ),
-      'allowed_values_function' => '',
-    ),
-    'translatable' => 0,
-    'type' => 'list_text',
-    '_instance' => array(
-      'bundle' => 'sba_message_action',
-      'deleted' => 0,
-      'description' => 'Check this box to enable test mode. Messages will not be sent to any configured targets when test mode is enabled.',
-      'display' => array(
-        'default' => array(
-          'label' => 'Above',
-          'module' => 'list',
-          'settings' => array(),
-          'type' => 'hidden',
-          'weight' => 3,
-        ),
-        'teaser' => array(
-          'label' => 'hidden',
-          'settings' => array(),
-          'type' => 'hidden',
-          'weight' => 0,
-        ),
-      ),
-      'entity_type' => 'node',
-      'field_name' => 'field_sba_test_mode',
-      'label' => 'Enable Test Mode',
-      'required' => 0,
-      'settings' => array(
-        'user_register_form' => FALSE,
-      ),
-      'widget' => array(
-        'active' => 1,
-        'module' => 'options',
-        'settings' => array(
-        ),
-        'type' => 'options_buttons',
-        'weight' => 31,
-      ),
-    ),
-  );
-
-  // Exported field_base: 'field_sba_test_mode_email'
-  $fields['field_sba_test_mode_email'] = array(
-    'active' => 1,
-    'cardinality' => 1,
-    'deleted' => 0,
-    'entity_types' => array(),
-    'field_name' => 'field_sba_test_mode_email',
-    'foreign keys' => array(
-      'format' => array(
-        'columns' => array(
-          'format' => 'format',
-        ),
-        'table' => 'filter_format',
-      ),
-    ),
-    'indexes' => array(
-      'format' => array(
-        0 => 'format',
-      ),
-    ),
-    'locked' => 0,
-    'module' => 'text',
-    'settings' => array(
-      'max_length' => 255,
-    ),
-    'translatable' => 0,
-    'type' => 'text',
-    '_instance' => array(
-      'bundle' => 'sba_message_action',
-      'default_value' => NULL,
-      'deleted' => 0,
-      'description' => 'Enter an email address for test mode. Test messages will be sent to this address instead of to the configured targets.',
-      'display' => array(
-        'default' => array(
-          'label' => 'hidden',
-          'module' => 'text',
-          'settings' => array(),
-          'type' => 'hidden',
-          'weight' => 4,
-        ),
-        'teaser' => array(
-          'label' => 'none',
-          'settings' => array(),
-          'type' => 'hidden',
-          'weight' => 0,
-        ),
-      ),
-      'entity_type' => 'node',
-      'field_name' => 'field_sba_test_mode_email',
-      'label' => 'Test Mode Email Address',
-      'required' => 0,
-      'settings' => array(
-        'text_processing' => 0,
-        'user_register_form' => FALSE,
-      ),
-      'widget' => array(
-        'active' => 1,
-        'module' => 'text',
-        'settings' => array(
-          'size' => 60,
-        ),
-        'type' => 'text_textfield',
-        'weight' => 32,
-      ),
-    ),
-  );
-
-  foreach ($fields as $key => $values) {
-    $instance = $values['_instance'];
-    unset($values['_instance']);
-    $base = field_info_field($key);
-    $node = field_info_instance('node', $key, 'sba_message_action');
-    if(empty($base)) {
-      field_create_field($values);
-    }
-    if(empty($node)) {
-      field_create_instance($instance);
-    }
-
-  }
-  if($update == FALSE) {
-
-    $export = array();
-
-    $field_group = new stdClass();
-    $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
-    $field_group->api_version = 1;
-    $field_group->identifier = 'group_test_mode|node|sba_message_action|form';
-    $field_group->group_name = 'group_test_mode';
-    $field_group->entity_type = 'node';
-    $field_group->bundle = 'sba_message_action';
-    $field_group->mode = 'form';
-    $field_group->parent_name = '';
-    $field_group->label = 'Test Mode';
-    $field_group->weight = '33';
-    $field_group->children = array(
-      0 => 'field_sba_test_mode',
-      1 => 'field_sba_test_mode_email',
-    );
-    $field_group->format_type = 'fieldset';
-    $field_group->format_settings = array(
-      'label' => 'Test Mode',
-      'instance_settings' => array(
-        'required_fields' => 1,
-        'classes' => 'group-test-mode field-group-fieldset',
-        'description' => '',
-      ),
-      'formatter' => 'collapsible',
-    );
-
-    $export['group_test_mode|node|sba_message_action|form'] = $field_group;
-
-    foreach ($export as $field_group) {
-      field_group_group_save($field_group);
-    }
-  }
-}
-
-function _sbp_message_action_create_user_profile_fields () {
-$phone_exists = field_info_field('sbp_phone');
-
-  $profile_phone = array(
-    'label' => t('Phone'),
-    'field_name' => 'sbp_phone',
-    'type' => 'text',
-    'widget' => array(
-      'type' => 'text_textfield',
-    ),
-  );
-
-  if (empty($phone_exists)) {
-    field_create_field($profile_phone);
-  }
-
-  $instance_exists = field_info_instance('user', 'sbp_phone', 'user');
-  if (empty($instance_exists)) {
-    $instance = array(
-      'entity_type' => 'user',
-      'bundle' => 'user',
-    );
-    $instance = array_merge($profile_phone, $instance);
-    field_create_instance($instance);
-  }
-
-  $salutation_exists = field_info_field('sbp_salutation');
-
-  $profile_salutation = array(
-    'active' => 1,
-    'cardinality' => 1,
-    'deleted' => 0,
-    'entity_types' => array(),
-    'field_name' => 'sbp_salutation',
-    'foreign keys' => array(),
-    'indexes' => array(
-      'value' => array(
-        0 => 'value',
-      ),
-    ),
-    'locked' => 0,
-    'module' => 'list',
-    'settings' => array(
-      'allowed_values' => array(
-        'Mr' => 'Mr',
-        'Mrs' => 'Mrs',
-        'Ms' => 'Ms',
-      ),
-      'allowed_values_function' => '',
-    ),
-    'translatable' => 0,
-    'type' => 'list_text',
-  );
-
-  if (empty($salutation_exists)) {
-    field_create_field($profile_salutation);
-  }
-
-  $sbp_salutation = array(
-    'bundle' => 'user',
-    'default_value' => NULL,
-    'deleted' => 0,
-    'description' => '',
-    'display' => array(
-      'default' => array(
-        'label' => 'above',
-        'module' => 'list',
-        'settings' => array(),
-        'type' => 'list_default',
-        'weight' => 0,
-      ),
-    ),
-    'entity_type' => 'user',
-    'field_name' => 'sbp_salutation',
-    'label' => 'Salutation',
-    'required' => 0,
-    'settings' => array(
-      'user_register_form' => 0,
-    ),
-    'widget' => array(
-      'active' => 1,
-      'module' => 'options',
-      'settings' => array(),
-      'type' => 'options_select',
-      'weight' => 4,
-    ),
-  );
-
-  $sal_instance_exists = field_info_instance('user', 'sbp_salutation', 'user');
-  if (empty($sal_instance_exists)) {
-    field_create_instance($sbp_salutation);
-  }
-
-}
-
-function _sba_message_action_create_example_message_action() {
-  $node = new stdClass();
-  $node->is_new = 1;
-  $node->type = 'sba_message_action';
-  $node->language = LANGUAGE_NONE;
-  $node->uid = 1;
-  $node->title = 'Example Message Action Form';
-  $node->status = 1;
-  $node->promote = 0;
-  $node->body[LANGUAGE_NONE][0]['value'] = 'Donec placerat. Nullam nibh dolor, blandit sed, fermentum id, ' .
-    'imperdiet sit amet, neque. Nam mollis ultrices justo. Sed tempor. Sed vitae tellus. Etiam sem arcu, eleifend ' .
-    'sit amet, gravida eget, porta at, wisi. Nam non lacus vitae ipsum viverra pretium. Phasellus massa. Fusce ' .
-    'magna sem, gravida in, feugiat ac, molestie eget, wisi. Fusce consectetuer luctus ipsum. Vestibulum nunc. ' .
-    'Suspendisse dignissim adipiscing libero. Integer leo. Sed pharetra ligula a dui. Quisque ipsum nibh, ullamcorper ' .
-    'eget, pulvinar sed, posuere vitae, nulla. Sed varius nibh ut lacus. Curabitur fringilla. Nunc est ipsum, ' .
-    'pretium quis, dapibus sed, varius non, lectus. Proin a quam. Praesent lacinia, eros quis aliquam porttitor, ' .
-    'urna lacus volutpat urna, ut fermentum neque mi egestas dolor.';
-  $node->body[LANGUAGE_NONE][0]['summary'] = 'Donec placerat. Nullam nibh dolor, blandit sed, fermentum id, imperdiet ' .
-    'sit amet, neque. Nam mollis ultrices justo. Sed tempor. Sed vitae tellus. Etiam sem arcu, eleifend sit amet, ' .
-    'gravida eget, porta at, wisi. Nam non lacus vitae ipsum viverra pretium. Phasellus massa. Fusce magna sem, gravida ' .
-    'in, feugiat ac, molestie eget, wisi.';
-  $node->body[LANGUAGE_NONE][0]['format'] = 'filtered_html';
-  $node->webform = array(
-    'confirmation' => 'Thank you, %value[sbp_first_name] for participating in the messaging campaign. [action:recipients]',
-    'confirmation_format' => 'filtered_html',
-    'redirect_url' => '<confirmation>',
-    'teaser' => 0,
-    'block' => 0,
-    'allow_draft' => 0,
-    'auto_save' => 0,
-    'submit_notice' => 1,
-    'submit_text' => t('Sign'),
-    'submit_limit' => -1,
-    'submit_interval' => -1,
-    'total_submit_limit' => -1,
-    'total_submit_interval' => -1,
-    'status' => 1,
-    'record_exists' => '',
-    'roles' => array(
-      '0' => 1,
-      '1' => 2,
-    ),
-    'emails' => array(),
-    'components' => array(),
-  );
-  $email_nid = sba_message_action_email_wrapper_add();
-  if ($email_nid != NULL) {
-    $node->webform['emails'][1] = array(
-      'email' => '',
-      'template' => 'default',
-      'subject' => 'Thank you for your participation!',
-      'from_name' => 'Springboard',
-      'from_address' => 'example-from@example.com',
-      'html' => 0,
-      'attachments' => 0,
-      'excluded_components' => array(),
-    );
-  }
-  $node->is_webform_user = 1;
-  $node->field_webform_user_internal_name[LANGUAGE_NONE][0]['value'] = "Example Message Action Form";
-  if (module_exists('form_layouts')) {
-    $node->form_layouts = 'two_column_message_left_vertical';
-  }
-  $node->send_new_user_email = 0;
-  node_save($node);
-  $node = node_load($node->nid);
-
-  // Save confirmation details.
-  $confirmation['nid'] = $node->nid;
-  $confirmation['confirmation_page_title'] = 'Thank you for your participation!';
-  _webform_confirmations_update($confirmation);
-  // Save email wrapper details.
-  foreach ($node->webform['components'] as $component) {
-    if ($component['form_key'] == 'mail') {
-      $cid = $component['cid'];
-      $node->webform['emails'][1]['email'] = $cid;
-    }
-  }
-  if ($email_nid != NULL) {
-    $settings = array(
-      'nid' => $node->nid,
-      'eid' => 1,
-      'tid' => $email_nid,
-      'bcc_email' => '',
-      'html_message' => 'Thank you for your participation!',
-      'html_message_format' => 'filtered_html',
-      'text_message' => 'Thank you for your participation!',
-      'extra' => serialize(array()),
-    );
-  }
-  // One last save.
-  node_save($node);
-  email_wrappers_save_settings($node->nid, 1, $settings);
-  drupal_set_message(t('An example message to target form has been created.'));
-}
-
-function sba_message_action_email_wrapper_add() {
-  $node = new stdClass();
-  $node->is_new = 1;
-  $node->type = 'email_wrapper';
-  $node->language = LANGUAGE_NONE;
-  $node->uid = 1;
-  $node->title = 'Example Message Action Email Wrapper';
-  $node->status = 0;
-  $node->promote = 0;
-  $node->email_wrapper_from_name[LANGUAGE_NONE][0] = array(
-    'value' => 'Springboard',
-    'format' => '',
-    'safe_value' => 'Springboard',
-  );
-  $node->email_wrapper_from_email[LANGUAGE_NONE][0] = array(
-    'value' => 'example-from@example.com',
-    'format' => '',
-    'safe_value' => 'example-from@example.com',
-  );
-  $node->email_wrapper_reply_email[LANGUAGE_NONE][0] = array(
-    'value' => 'example-to@example.com',
-    'format' => '',
-    'safe_value' => 'example-to@example.com',
-  );
-  $node->email_wrapper_subject[LANGUAGE_NONE][0] = array(
-    'value' => 'Thank you for your participation!',
-    'format' => '',
-    'safe_value' => 'Thank you for your participation!',
-  );
-  $node->email_wrapper_html_template[LANGUAGE_NONE][0] = array(
-    'value' => 'Thank you for your participation!' . "\n" .
-      "\n" .
-      '%html_message' . "\n" .
-      "\n" .
-      '-----' . "\n" .
-      'Springboard Example',
-    'summary' => '',
-    'format' => 'filtered_html',
-    'safe_value' => '<p>Thank you for your participation!</p>' . "\n" .
-      '<p>%html_message</p>' . "\n" .
-      '<p>-----<br>' . "\n" .
-      'Springboard Example</p>',
-  );
-  $node->email_wrapper_html_message[LANGUAGE_NONE][0] = array(
-    'value' => 'Please visit us again soon.',
-    'summary' => '',
-    'format' => 'filtered_html',
-    'safe_value' => '<p>Please visit us again soon.</p>',
-  );
-  $node->email_wrapper_text_template[LANGUAGE_NONE][0] = array(
-    'value' => 'Thank you for your participation!' . "\n" .
-      "\n" .
-      '%text_message' . "\n" .
-      "\n" .
-      '-----' . "\n" .
-      'Springboard Example',
-    'format' => '',
-    'safe_value' => 'Thank you for your participation!' . "\n" .
-      "\n" .
-      '%text_message' . "\n" .
-      "\n" .
-      '-----' . "\n" .
-      'Springboard Example',
-  );
-  $node->email_wrapper_text_message[LANGUAGE_NONE][0] = array(
-    'value' => 'Please visit us again soon.',
-    'format' => 'filtered_html',
-    'safe_value' => '<p>Please visit us again soon.</p>',
-  );
-  node_save($node);
-  // Save extras.
-  drupal_set_message(t('An example message to target email wrapper has been created.'));
-  return $node->nid;
-}
-
-function _sba_message_action_reorder_internal_name() {
-  $instance_info = field_read_instance('node', 'field_webform_user_internal_name', 'sba_message_action');
-  $instance_info['widget']['weight'] = 1;
-  field_update_instance($instance_info);
-
-  $instance_info = field_read_instance('node', 'field_message_action_img', 'sba_message_action');
-  $instance_info['widget']['weight'] = 2;
-  field_update_instance($instance_info);
-
-  $instance_info = field_read_instance('node', 'field_message_call_to_action', 'sba_message_action');
-  $instance_info['widget']['weight'] = 4;
-  field_update_instance($instance_info);
-
-  $instance_info = field_read_instance('node', 'body', 'sba_message_action');
-  $instance_info['widget']['weight'] = 5;
-  field_update_instance($instance_info);
-}
-
-function _springboard_message_action_install_taxonomy_fields() {
-  module_load_include('inc', 'field', 'field.crud');
-  module_load_include('inc', 'field', 'field.info');
-  module_load_install('springboard_advocacy');
-  if(function_exists('_springboard_advocacy_install_taxonomy_field_definitions')) {
-    foreach (_springboard_advocacy_install_taxonomy_field_definitions() as $field_name => $field) {
-      if (!field_info_field('field_' . $field_name)) {
-        field_create_field($field['field_config']);
-      }
-      // Before adding the field, check that it doesn't exist on the node type.
-      if (!field_info_instance('node', 'field_' . $field_name, 'sba_message_action')) {
-        field_create_instance($field['field_instance']);
-      }
-    }
-  }
 }
 
 /**
@@ -855,67 +127,33 @@ function _springboard_message_action_install_taxonomy_fields() {
  */
 function sba_message_action_uninstall() {
   // Delete email_wrapper nodes.
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install');
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_fields');
+
   _sba_message_action_delete_nodes();
-
   // Remove fields implemented by this module.
-  _sba_message_action_delete_fields();
-
-  // Delete the email wrapper content type.
+  // _sba_message_action_delete_fields();
+  // Delete the message action content type.
   node_type_delete('sba_message_action');
   field_purge_batch(1000);
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_taxonomy');
+  _sba_message_action_delete_legislative_vocab();
+
 }
 
 
-/**
- * Delete springboard message action fields
- */
-function _sba_message_action_delete_fields() {
-  $fields = array(
-    'sba_message_action_call_to_action',
-  );
-  foreach ($fields as $field_name) {
-    $field = field_info_instance('node', $field_name, 'sba_message_action');
-    field_delete_instance($field);
-    $field = field_info_field($field_name);
-    field_delete_field($field_name);
-  }
-  drupal_set_message('Springboard message action fields deleted.');
-}
-
-
-/**
- * Delete springboard message action nodes and their messages.
- */
-function _sba_message_action_delete_nodes() {
-
-  $result = db_select('node', 'n')
-    ->fields('n', array('nid'))
-    ->condition('type', 'sba_message_action')
-    ->execute();
-
-  $nids = $result->fetchCol();
-
-  if (!empty($nids)) {
-    if(module_exists('sba_message')) {
-
-      $message_ids = db_query(
-      'SELECT entity_id FROM {field_data_field_sba_action_id} WHERE field_sba_action_id_target_id IN (:nids)',
-      array(':nids' => $nids))->fetchAssoc();
-
-      drupal_load('module', 'sba_message');
-      if (is_array($message_ids)) {
-        sba_message_delete_multiple($message_ids);
-      }
-    }
-
-    node_delete_multiple($nids);
-
-    drupal_set_message('Springboard message actions have been deleted.');
-  }
+function sba_message_action_enable() {
+  // This is for sites upgraded from 4.7
+  // in case actions was experimentally enabled then disabled
+  // without completely uninstalling
+  // we need to recreate the taxonomy that
+  // springboard_advocacy_update_7007() deletes.
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_taxonomy');
+  _sba_message_action_install_vocab_sba_legislative_issues();
 }
 
 /**
- * rename alert var to action
+ * Rename alert var to action.
  */
 function sba_message_action_update_7001() {
   $types = variable_get('springboard_advocacy_alert_types', array(''));
@@ -924,28 +162,29 @@ function sba_message_action_update_7001() {
 }
 
 /**
- *  Add message action confirmation table
+ * Add message action confirmation table.
  */
 function sba_message_action_update_7002() {
   $schema = module_invoke('sba_message_action', 'schema');
-  if(db_table_exists('sba_message_action_confirm') == FALSE) {
+  if (db_table_exists('sba_message_action_confirm') == FALSE) {
     db_create_table('sba_message_action_confirm', $schema['sba_message_action_confirm']);
   }
 }
 /**
- *  Add message action confirmation table fail message field
+ * Add message action confirmation table fail message field.
  */
 function sba_message_action_update_7003() {
   $schema = module_invoke('sba_message_action', 'schema');
-  if(db_field_exists('sba_message_action_confirm', 'fail_message') == FALSE) {
+  if (db_field_exists('sba_message_action_confirm', 'fail_message') == FALSE) {
     db_add_field('sba_message_action_confirm', 'fail_message', $schema['sba_message_action_confirm']['fields']['fail_message']);
   }
 }
 
 /**
- *  Create call to action field, make body field required.
+ * Create call to action field, make body field required.
  */
 function sba_message_action_update_7004() {
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_fields');
   _sba_message_action_create_node_fields(TRUE);
   $instance_info = field_read_instance('node', 'body', 'sba_message_action');
   $instance_info['required'] = 1;
@@ -964,7 +203,6 @@ function sba_message_action_update_7005() {
     field_update_instance($field);
   }
 }
-
 
 /**
  * Namespace the test_mode fields.
@@ -1038,9 +276,255 @@ function sba_message_action_update_7006() {
     ctools_export_crud_save($table, $field_group);
   }
 }
+
 /**
  * Reorder field weights on edit form.
  */
 function sba_message_action_update_7007() {
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install');
   _sba_message_action_reorder_internal_name();
+}
+
+/**
+ * Add user edit flag to existing actions.
+ */
+function sba_message_action_update_7008() {
+
+  $nodes = db_query('select n.nid from {node} n
+    WHERE n.type = :type',
+    array(':type' => 'sba_message_action')
+  );
+
+  foreach ($nodes as $node) {
+
+    $nid = db_query('select nid from {webform_component}
+      WHERE nid = :nid AND form_key = :key',
+      array(':nid' => $node->nid, ':key' => 'sba_user_edit_flag')
+    )->fetchField();
+
+    if (!$nid) {
+      $field = array(
+        'nid' => $node->nid,
+        'form_key' => 'sba_user_edit_flag',
+        'pid' => 0,
+        'name' => t('User Edit Flag'),
+        'type' => 'hidden',
+        'value' => 0,
+        'weight' => 13,
+        'email' => 1,
+      );
+      webform_component_insert($field);
+    }
+  }
+}
+
+
+/**
+ * Enable springboard_taxonomy dependency.
+ */
+function sba_message_action_update_7009() {
+  if (!module_exists('springboard_taxonomy')) {
+    module_enable(array('springboard_taxonomy'));
+  }
+}
+
+/**
+ * Add message action to taxonomy node types.
+ */
+function sba_message_action_update_7010() {
+  $taxonomy_types = variable_get('springboard_taxonomy_node_types', array());
+  $taxonomy_types = array_merge($taxonomy_types, array('sba_message_action' => 'sba_message_action'));
+  variable_set('springboard_taxonomy_node_types', array_unique($taxonomy_types));
+}
+
+/**
+ * Install legislative issues vocabulary if missing.
+ */
+function sba_message_action_update_7011() {
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_taxonomy');
+  _sba_message_action_install_vocab_sba_legislative_issues();
+  _sba_message_action_install_taxonomy_fields();
+}
+
+/**
+ * Install deliverable_message_count if missing.
+ */
+function sba_message_action_update_7012() {
+
+  $nodes = db_query('select n.nid from {node} n
+    WHERE n.type = :type',
+    array(':type' => 'sba_message_action')
+  );
+
+  foreach ($nodes as $node) {
+    $nid = db_query('select nid from {webform_component}
+      WHERE nid = :nid AND form_key = :key',
+      array(':nid' => $node->nid, ':key' => 'sba_deliverable_count')
+    )->fetchField();
+
+    if (!$nid) {
+      $field = array(
+        'nid' => $node->nid,
+        'form_key' => 'sba_deliverable_count',
+        'pid' => 0,
+        'name' => t('Messages Generated'),
+        'type' => 'hidden',
+        'value' => 0,
+        'weight' => 13,
+        'email' => 1,
+      );
+      webform_component_insert($field);
+    }
+  }
+}
+
+/**
+ * Install zip+4 profile field and component if missing.
+ */
+function sba_message_action_update_7013() {
+  module_load_include('inc', 'sba_message_action', 'includes/install/sba_message_action.install_profile');
+
+  _sba_message_action_create_zip_plus_four();
+
+  $nodes = db_query('select n.nid from {node} n
+    WHERE n.type = :type',
+    array(':type' => 'sba_message_action')
+  );
+
+  foreach ($nodes as $node) {
+    $nid = db_query('select nid from {webform_component}
+      WHERE nid = :nid AND form_key = :key',
+      array(':nid' => $node->nid, ':key' => 'sbp_zip_plus_four')
+    )->fetchField();
+    if (!$nid) {
+      $field = array(
+        'nid' => $node->nid,
+        'form_key' => 'sbp_zip_plus_four',
+        'pid' => 0,
+        'name' => t('Zip+4'),
+        'type' => 'hidden',
+        'value' => '',
+        'weight' => 13,
+        'email' => 1,
+      );
+      webform_component_insert($field);
+    }
+  }
+}
+
+/**
+ * Install zip+4 profile field and component if missing.
+ */
+function sba_message_action_update_7014() {
+  $webform_user_default_fields_sba_message_action = variable_get('webform_user_default_fields_sba_message_action', array());
+  $fields = array_merge($webform_user_default_fields_sba_message_action, array('sbp_zip_plus_four'));
+  variable_set('webform_user_default_fields_sba_message_action', array_unique($fields));
+}
+
+/**
+ * Install action optin if missing.
+ */
+function sba_message_action_update_7015() {
+
+  $nodes = db_query('select n.nid from {node} n
+    WHERE n.type = :type',
+    array(':type' => 'sba_message_action')
+  );
+
+  foreach ($nodes as $node) {
+    $nid = db_query('select nid from {webform_component}
+      WHERE nid = :nid AND form_key = :key',
+      array(':nid' => $node->nid, ':key' => 'sbp_sba_action_optin')
+    )->fetchField();
+
+    if (!$nid) {
+      $field = array(
+        'nid' => $node->nid,
+        'form_key' => 'sbp_sba_action_optin',
+        'name' => t('Action Opt In'),
+        'type' => 'select',
+        'mandatory' => 0,
+        'pid' => 0,
+        'weight' => 40,
+        'explanation' => '',
+        'options' => array(0, 1),
+        'category_key' => NULL,
+        'category_name' => NULL,
+        'extra' => array(
+          'title_display' => 'none',
+          'multiple' => 1,
+          'items' => 'sbp_sba_action_optin|Show my name in a list of action takers.'
+        ),
+      );
+      webform_component_insert($field);
+    }
+  }
+}
+
+/**
+ *  Add message action optin id table
+ */
+function sba_message_action_update_7016() {
+  $schema = module_invoke('sba_message_action', 'schema');
+  if(db_table_exists('springboard_action_opt_in') == FALSE) {
+    db_create_table('springboard_action_opt_in', $schema['springboard_action_opt_in']);
+  }
+}
+
+/**
+ *  Add message action optin id table
+ */
+function sba_message_action_update_7017() {
+  $schema = module_invoke('sba_message_action', 'schema');
+  if(db_table_exists('springboard_action_opt_in_block') == FALSE) {
+    db_create_table('springboard_action_opt_in_block', $schema['springboard_action_opt_in_block']);
+  }
+}
+
+function sba_message_action_update_7018() {
+  $schema = module_invoke('sba_message_action', 'schema');
+  if(db_table_exists('cache_deliverability_report') == FALSE) {
+    db_create_table('cache_deliverability_report', $schema['cache_deliverability_report']);
+  }
+}
+
+
+function sba_message_action_update_7019() {
+  $schema = module_invoke('sba_message_action', 'schema');
+  if(db_table_exists('cache_deliverability_target') == FALSE) {
+    db_create_table('cache_deliverability_target', $schema['cache_deliverability_target']);
+  }
+}
+
+/**
+ * Install deliverable_message_count if missing.
+ */
+function sba_message_action_update_7020() {
+
+  $nodes = db_query('select n.nid from {node} n
+    WHERE n.type = :type',
+    array(':type' => 'sba_message_action')
+  );
+
+  foreach ($nodes as $node) {
+    $cid = db_query('select cid from {webform_component}
+      WHERE nid = :nid AND form_key = :key',
+      array(':nid' => $node->nid, ':key' => 'sba_deliverable_count')
+    )->fetchField();
+
+    if ($cid) {
+      $field = array(
+        'cid' => $cid,
+        'nid' => $node->nid,
+        'form_key' => 'sba_deliverable_count',
+        'pid' => 0,
+        'name' => t('Messages Generated'),
+        'type' => 'hidden',
+        'value' => 0,
+        'weight' => 13,
+        'email' => 1,
+      );
+      webform_component_update($field);
+    }
+  }
 }

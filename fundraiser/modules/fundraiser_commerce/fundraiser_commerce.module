@@ -58,8 +58,8 @@ function fundraiser_commerce_menu_alter(&$items) {
   // Custom refund form for fundraiser
   $items['admin/commerce/orders/%commerce_order/payment/%commerce_payment_transaction/refund'] = array(
     'title' => 'Refund',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('fundraiser_commerce_refund_form', 3, 5),
+    'page callback' => 'fundraiser_commerce_refund_form',
+    'page arguments' => array(3, 5),
     'access callback' => 'fundraiser_commerce_refund_form_access',
     'access arguments' => array(3, 5),
     'type' => MENU_DEFAULT_LOCAL_TASK,
@@ -95,7 +95,7 @@ function fundraiser_commerce_refund_form_access($order, $transaction) {
  * Form callback, override Commerce provided refund forms with our own.
  * This is just a wrapper, to get the rest of the goodies in place.
  */
-function fundraiser_commerce_refund_form($form, &$form_state, $order, $transaction) {
+function fundraiser_commerce_refund_form($order, $transaction) {
   return drupal_get_form('_fundraiser_refund_form', $order->order_id);
 }
 
@@ -999,8 +999,11 @@ function fundraiser_commerce_fundraiser_donation_create($donation) {
   $node = $donation->node;
   // Pick out the values we need to generate an order.
   if ($donation->donation['amount'] == 'other') {
-    $donation->donation['amount'] = preg_replace('/[^\d\.]/i', '', $donation->donation['other_amount']);
+    $donation->donation['amount'] = _fundraiser_amount_value_sanitize($donation->donation['other_amount']);
   }
+
+  // If not set, set the donation amount on the main donation object.
+  $donation->amount = isset($donation->amount) ? $donation->amount : _fundraiser_amount_value_sanitize($donation->donation['amount']);
 
   // Set or convert the $donation->donation currency value to an array of currency values.
   if (!isset($donation->donation['currency'])) {
@@ -1047,7 +1050,7 @@ function fundraiser_commerce_fundraiser_donation_create($donation) {
     $line_item = commerce_line_item_new('donation', $order->order_id);
     $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
     $line_item_wrapper->quantity = $quantity;
-    $line_item_wrapper->commerce_unit_price->amount = commerce_currency_decimal_to_amount($donation->donation['amount'], $donation->donation['currency']['code']);
+    $line_item_wrapper->commerce_unit_price->amount = commerce_currency_decimal_to_amount($donation->amount, $donation->donation['currency']['code']);
     $line_item_wrapper->commerce_unit_price->currency_code = $donation->donation['currency']['code'];
 
     $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add(

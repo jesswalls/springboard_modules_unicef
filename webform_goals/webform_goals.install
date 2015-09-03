@@ -261,6 +261,30 @@ function webform_goals_schema() {
       'nid' => array('nid'),
     ),
   );
+  $schema['webform_goals_quick'] = array(
+    'description' => 'node id lookup table by group',
+    'fields' => array(
+      'gid' => array(
+        'description' => 'Goal id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'nid' => array(
+        'description' => 'node id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('gid', 'nid'),
+    'indexes' => array(
+      'gid' => array('gid'),
+      'nid' => array('nid'),
+    ),
+  );
   return $schema;
 }
 
@@ -273,4 +297,11 @@ function webform_goals_update_7001() {
   db_add_index('webform_goals_node', 'nid', array('nid'));
 
   return t('Added indexes to {webform_goals} and {webform_goals_node} tables.');
+}
+
+function webform_goals_update_7002() {
+  $schema = module_invoke('webform_goals', 'schema');
+  if(db_table_exists('webform_goals_quick') == FALSE) {
+    db_create_table('webform_goals_quick', $schema['webform_goals_quick']);
+  }
 }

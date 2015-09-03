@@ -504,6 +504,24 @@ abstract class FundraiserSetup extends DrupalWebTestCase {
   }
 
   /**
+   * Submit a recurring donation to a donation form.
+   *
+   * @param int $nid
+   *   The node ID of the donation form.
+   * @param \DateTime $expiration
+   *   The expiration date of the credit card.
+   */
+  protected function submitRecurringDonation($nid, DateTime $expiration) {
+    $post_config = array(
+      'submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_month]' => $expiration->format('n'),
+      'submitted[payment_information][payment_fields][credit][expiration_date][card_expiration_year]' => $expiration->format('Y'),
+      'submitted[payment_information][recurs_monthly][recurs]' => 'recurs',
+    );
+
+    $this->submitDonation($nid, $post_config);
+  }
+
+  /**
    * Create a standard post.
    */
   protected function submitDonation($nid, $post_config = '') {

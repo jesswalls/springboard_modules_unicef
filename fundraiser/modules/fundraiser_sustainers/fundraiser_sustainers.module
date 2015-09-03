@@ -16,6 +16,22 @@ define('FUNDRAISER_SUSTAINERS_RETRY_STATUS', 'retry');
 define('FUNDRAISER_SUSTAINERS_FAILED_STATUS', 'failed');
 define('FUNDRAISER_SUSTAINERS_SUCCESS_STATUS', 'success');
 
+define('FUNDRAISER_SUSTAINERS_SKIPPED_STATUS', 'skipped');
+define('FUNDRAISER_SUSTAINERS_CANCELED_STATUS', 'canceled');
+define('FUNDRAISER_SUSTAINERS_SCHEDULED_STATUS', 'scheduled');
+define('FUNDRAISER_SUSTAINERS_LOCKED_STATUS', 'locked');
+
+/**
+ * Status for a master donation where sustainer series is pending creation.
+ */
+define('FUNDRAISER_SUSTAINERS_SERIES_STATUS_PENDING', 'pending');
+
+/**
+ * Status for a master donation where sustainer series has completed creation.
+ */
+define('FUNDRAISER_SUSTAINERS_SERIES_STATUS_COMPLETE', 'complete');
+
+
 /**
  * Implements hook_cron().
  */
@@ -89,6 +105,18 @@ function fundraiser_sustainers_views_api() {
     'api' => 3,
     'path' => drupal_get_path('module', 'fundraiser_sustainers') . '/includes',
   );
+}
+
+/**
+ * Implements hook_cron_queue_info().
+ */
+function fundraiser_sustainers_cron_queue_info() {
+  // Queue worker to create recurring series.
+  $queues['fundraiser_sustainers_create_series'] = array(
+    'worker callback' => '_fundraiser_sustainers_create_series_queue_worker',
+  );
+
+  return $queues;
 }
 
 /**
@@ -339,6 +367,7 @@ function fundraiser_sustainers_charge_now($did) {
   $recurring = array(
     'did' => $did,
     'new_state' => 'scheduled',
+    'old_state' => 'advance_charge',
     'next_charge' => $new_charge,
   );
 
@@ -365,7 +394,6 @@ function fundraiser_sustainers_skip_submit($form, &$form_state) {
   // Given a did, update the charge date to now.
   $donation = fundraiser_donation_get_donation($form_state['values']['did']);
   fundraiser_donation_cancel($donation);
-  $donation->donation_skipped = TRUE;
 
   _fundraiser_commerce_update_order_status('skipped', $donation->did);
   $donation->status = 'skipped';
@@ -382,8 +410,12 @@ function fundraiser_sustainers_skip_submit($form, &$form_state) {
   _fundraiser_sustainers_update_recurring($recurring);
 
   if (module_exists('salesforce_genmap')) {
+    // Add this flag to ensure the skipped SF status gets set.
+    $donation->donation_skipped = TRUE;
+
     salesforce_genmap_send_object_to_queue('salesforce_donation', 'update', $donation->node, $donation->did, $donation, 'donation');
   }
+
   drupal_set_message(t('The recurring donation has been cancelled.'));
   // Afterwards return where we came from.
   drupal_goto(drupal_get_destination());
@@ -568,6 +600,9 @@ function fundraiser_sustainers_salesforce_genmap_map_fields_alter(&$fields, $con
       }
       // Corrects the StageName to whatever value is appropriate based on mapped stages.
       if (isset($donation->donation_skipped) && $donation->donation_skipped) {
+        // Remove the transaction date field for skipped sustainers.
+        unset($fields['Transaction_Date_Time__c']);
+
         if (isset($fields['StageName'])) {
           $stagename = 'Skipped';
           if (module_exists('salesforce_donation')) {
@@ -728,7 +763,13 @@ function fundraiser_sustainers_process_recurring_donations() {
 
   // Loop over the found orders
   foreach ($donations as $recurring) {
-    fundraiser_sustainers_process_single_recurring_donation($log, $recurring, $sustainer_key);
+    try {
+
+      fundraiser_sustainers_process_single_recurring_donation($log, $recurring, $sustainer_key);
+    }
+    catch (Exception $e) {
+      fundraiser_sustainers_processing_exception($e, $recurring);
+    }
 
   }
   if ($log['successes'] > 0 || $log['fails'] > 0) {
@@ -777,6 +818,7 @@ function fundraiser_sustainers_process_single_recurring_donation(&$log, $recurri
     // Since we already created the donation (and saved any CC info at that time).
     // All we need to do is process it and respond afterwards as needed.
     fundraiser_donation_process($donation);
+
     if (!isset($donation->result['message'])) {
       $donation->result['message'] = '';
     }
@@ -1204,11 +1246,20 @@ function fundraiser_sustainers_form_fundraiser_admin_settings_alter(&$form, &$fo
   );
   $form['fundraiser_sustainers']['fundraiser_cron']['fundraiser_standalone_cron_enabled'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Enable standalone cron.'),
-    '#description' => t('If this option is enabled all fundraiser related cron tasks will be removed from the ' .
-      'standard cron run. These tasks will need to be cronned separately via sitename/fundraiser_cron'),
-    '#default_value' => variable_get('fundraiser_standalone_cron_enabled', 0),
+    '#title' => t('Sustainer processing on standalone cron.'),
+    '#description' => t('If this option is enabled the payment processing for recurring donations will removed from the ' .
+      'standard cron run. This task will need to be cronned separately via sitename/fundraiser_cron'),
+     '#default_value' => variable_get('fundraiser_standalone_cron_enabled', 0),
+   );
+
+  // Create series on cron option.
+  $form['fundraiser_sustainers']['fundraiser_cron']['fundraiser_sustainers_create_series_cron'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Create the recurring series on cron.'),
+    '#description' => t("Enable this option to create the recurring series using Drupal's cron queue."),
+    '#default_value' => variable_get('fundraiser_sustainers_create_series_cron', 0),
   );
+
   // CC expiration message to send when sustainer donation is almost out.
   $form['fundraiser_sustainers']['fundraiser_cc_expiration_message'] = array(
     '#type' => 'fieldset',
@@ -1321,6 +1372,20 @@ function fundraiser_sustainers_edit_form($did) {
     return t('You do not have access to this recurring donation.');
   }
 
+  // Text used for various sections of the form if no more charges remain.
+  $no_remaining_message = t('There are no further charges for this recurring donation.');
+
+  // If the series creation is pending let the user know.
+  if (
+    !empty($donation->data['fundraiser_sustainers_series_status'])
+    && $donation->data['fundraiser_sustainers_series_status'] == FUNDRAISER_SUSTAINERS_SERIES_STATUS_PENDING
+  ) {
+    drupal_set_message(t('The recurring donation schedule for this series will be created soon.'), 'warning');
+
+    // Update the no remaining message to reflect that the series hasn't been created.
+    $no_remaining_message = t('You can manage this recurring donation when the complete schedule has been created. Please check back soon.');
+  }
+
   // Grab the next to be charged for misc info.
   $remaining = _fundraiser_sustainers_get_donations_recurr_remaining($donation->did);
   $next_donation = $donation;
@@ -1334,8 +1399,10 @@ function fundraiser_sustainers_edit_form($did) {
   // Use next donation in case it has differnt info than the master donation.
   if (isset($next_donation->data['cardonfile']) && module_exists('commerce_cardonfile')) {
     $cardonfile = commerce_cardonfile_load($next_donation->data['cardonfile']);
-    $number = '**** **** **** '  . $cardonfile->card_number;
-    $type = t('Card');
+    if (!empty($cardonfile)) {
+      $number = '**** **** **** '  . $cardonfile->card_number;
+      $type = t('Card');
+    }
   }
 
   // Gather further donation data.
@@ -1463,7 +1530,7 @@ function fundraiser_sustainers_edit_form($did) {
     }
   }
   elseif ($remaining_donation_count == 0) {
-    $donation_amount_form = t('There are no further charges for this recurring donation.');
+    $donation_amount_form = $no_remaining_message;
     $donation_date_form = '';
   }
   else {
@@ -1476,7 +1543,7 @@ function fundraiser_sustainers_edit_form($did) {
     $billing_update_form = drupal_render($billing_update_form_array);
   }
   elseif ($remaining_donation_count == 0) {
-    $billing_update_form = t('There are no further charges for this recurring donation.');
+    $billing_update_form = $no_remaining_message;
   }
   else {
     $billing_update_form = t('This recurring donation has been cancelled.');
@@ -1488,7 +1555,7 @@ function fundraiser_sustainers_edit_form($did) {
     $cancel_form = drupal_render($cancel_form_array);
   }
   elseif ($remaining_donation_count == 0) {
-    $cancel_form = t('There are no further charges for this recurring donation.');
+    $cancel_form = $no_remaining_message;
   }
   else {
     $cancel_form = t('This recurring donation has been cancelled. Your reason given was: %reason', array('%reason' => $cancelled));
@@ -1588,6 +1655,7 @@ function fundraiser_sustainers_donation_amount_form_submit($form, &$form_state) 
   foreach ($donations as $donation) {
     $donation = fundraiser_donation_get_donation($donation->did);
     $old_amount = $donation->donation['amount'];
+    $donation->amount = $amount;
     $donation->donation['amount'] = $amount;
     $donation->donation['old_amount'] = $old_amount;
 
@@ -1714,6 +1782,7 @@ function fundraiser_sustainers_change_charge_date($master_did, $new_day) {
       $log_record = array(
         'did' => $donation->did,
         'new_state' => 'scheduled',
+        'old_state' => 'changed_charge_day',
       );
       $log = fundraiser_sustainers_log();
       $log->changedChargeDay($donation->did);
@@ -2403,9 +2472,29 @@ function fundraiser_sustainers_fundraiser_donation_success($donation) {
           if (isset($info['expire callback'])) {
             $expiration_func = $info['expire callback'];
             if (function_exists($expiration_func)) {
-              $expires = $expiration_func($donation->donation, $info);
-              if (isset($expires['month']) && isset($expires['year'])) {
-                _fundraiser_sustainers_create_future_orders($donation, $expires['month'], $expires['year']);
+              // The future orders can be created now or later on cron.
+              if (variable_get('fundraiser_sustainers_create_series_cron', 0)) {
+                // Load the queue.
+                $queue = DrupalQueue::get('fundraiser_sustainers_create_series');
+
+                // The queue item is a simple array with the master donation did.
+                $item = array(
+                  'did' => $donation->did,
+                );
+
+                $queue->createItem($item);
+
+                // Set a flag on the donation data array and log the pending creation.
+                $donation->data['fundraiser_sustainers_series_status'] = FUNDRAISER_SUSTAINERS_SERIES_STATUS_PENDING;
+                watchdog('fundraiser_sustainers', 'Master recurring donation @did has been queued for later series creation.', array('@did' => $donation->did));
+              }
+              // Else, create the series now.
+              else {
+                $expires = $expiration_func($donation->donation, $info);
+                if (isset($expires['month']) && isset($expires['year'])) {
+                 _fundraiser_sustainers_create_future_orders($donation, $expires['month'], $expires['year']);
+                 $donation->data['fundraiser_sustainers_series_status'] = FUNDRAISER_SUSTAINERS_SERIES_STATUS_COMPLETE;
+                }
               }
             }
           }
@@ -2522,6 +2611,7 @@ function fundraiser_sustainers_fundraiser_donation_cancel($donation) {
   $recurring = array(
     'did' => $donation->did,
     'gateway_resp' => $canceled,
+    'lock_id' => 0,
     'cancellation_reason' => $reason,
   );
   _fundraiser_sustainers_update_recurring($recurring);
@@ -2595,6 +2685,28 @@ function fundraiser_sustainers_auto_cancel($donation) {
   // Invoke a rules event on auto cancellations.
   if (module_exists("rules")) {
     rules_invoke_event("fundraiser_sustainers_auto_cancel", $donation);
+  }
+}
+
+/**
+ * Cron queue worker callback.
+ *
+ * Creates the sustainer series during cron.
+ */
+function _fundraiser_sustainers_create_series_queue_worker($item) {
+  // Load the donation.
+  $donation = fundraiser_donation_get_donation($item['did']);
+
+  // Ensure we have the expiration dates and create the series.
+  $expiration_func = $donation->gateway['expire callback'];
+  $expires = $expiration_func($donation->donation, $donation->gateway);
+  if (isset($expires['month']) && isset($expires['year'])) {
+    _fundraiser_sustainers_create_future_orders($donation, $expires['month'], $expires['year']);
+
+    // Flag the creation process complete and log.
+    $donation->data['fundraiser_sustainers_series_status'] = FUNDRAISER_SUSTAINERS_SERIES_STATUS_COMPLETE;
+    watchdog('fundraiser_sustainers', 'The recurring series for master donation @did has been created.', array('@did' => $donation->did));
+    fundraiser_donation_update($donation);
   }
 }
 
@@ -2982,27 +3094,30 @@ function _fundraiser_sustainers_cron_get_recurring($limit = 200) {
   $now = strtotime('now');
   $uni_batch_id = uniqid();
   $max_processing_attempts = variable_get('fundraiser_sustainers_max_processing_attempts', 3);
-  // Lock them (faster to lock, then query, than the other way around).
-  // Since large data set returns => delay.
-  $donations = db_query('SELECT r.did FROM {fundraiser_sustainers} r ' .
+
+  // Load donations needing to be processed into an array of dids => status.
+  $donations = db_query('SELECT r.did, r.gateway_resp FROM {fundraiser_sustainers} r ' .
     'WHERE (r.gateway_resp IS NULL OR r.gateway_resp = :status) ' .
     'AND r.next_charge < :now ' .
     'AND (r.attempts < :max_attempts OR r.attempts IS NULL) ' . // If already been tried X times, Stop Trying.
     'AND r.lock_id = 0 ' . // And not locked.
     'LIMIT 0, ' . $limit,
     array(':status' => FUNDRAISER_SUSTAINERS_RETRY_STATUS, ':now' => $now, ':max_attempts' => $max_processing_attempts)
-  )->fetchAllKeyed(0, 0);
+  )->fetchAllKeyed(0, 1);
+
+  // Lock the donations and log the action.
   if (!empty($donations)) {
     db_query('UPDATE {fundraiser_sustainers} r1 ' .
-      'SET r1.lock_id = :uni_batch_id ' .
+      'SET r1.lock_id = :uni_batch_id, ' .
+      'r1.gateway_resp = :locked ' .
       'WHERE r1.did IN (:donations)',
-      array(':uni_batch_id' => $uni_batch_id, ':donations' => $donations)
+      array(':uni_batch_id' => $uni_batch_id, ':locked' => FUNDRAISER_SUSTAINERS_LOCKED_STATUS, ':donations' => array_keys($donations))
     );
 
     $log = fundraiser_sustainers_log();
     $log->logLockedDonations($donations, $uni_batch_id);
-
   }
+
   // Grab the locked donations for this batch.
   $donations = db_query('SELECT * FROM {fundraiser_sustainers} r ' .
     'LEFT JOIN {fundraiser_donation} d on r.did = d.did ' .
@@ -3271,6 +3386,93 @@ function fundraiser_sustainers_preprocess_html(&$vars) {
 
   if (arg(2) == 'reports' && arg(4) == 'insights' && arg(5) == 'this-month') {
     $vars['classes_array'][] = 'insights-this-month';
+  }
+
+}
+
+/**
+ * Log an exception during sustainer processing to watchdog.
+ *
+ * @param \Exception $e
+ *   The exception that was thrown.
+ * @param stdClass $sustainer
+ *   Part of the sustainer record for additional logging.
+ */
+function fundraiser_sustainers_processing_exception(Exception $e, $sustainer) {
+  $message = 'Exception thrown while processing a sustainer. Sustainer ID: %did. %type: !message in %function (line %line of %file).';
+  $variables = array('%did' => $sustainer->did);
+  watchdog_exception('fundraiser_sustainers', $e, $message, $variables);
+}
+
+/**
+ * Implements hook_action_info().
+ *
+ * Add the unlock sustainer action for VBO.
+ */
+function fundraiser_sustainers_action_info() {
+  return array(
+    'fundraiser_sustainers_unlock_sustainer_action' => array(
+      'type' => 'fundraiser_sustainer_record',
+      'label' => t('Unlock sustainer'),
+      'behavior' => array('changes_property'),
+      'configurable' => FALSE,
+      'vbo_configurable' => FALSE,
+      'triggers' => array('any'),
+      'permissions' => array('administrate recurring donations'),
+    ),
+  );
+}
+
+/**
+ * The unlock sustainer action.
+ *
+ * Note that I'm including all gateway_resp cases in case this action gets used
+ * in other situations besides the stuck sustainer VBO.
+ *
+ * Also note that drupal saves the sustainer record entity on its own so that's
+ * why it's not happening here.
+ *
+ * @param Entity $sustainer_record
+ *   The fundraiser_sustainer_record entity.
+ */
+function fundraiser_sustainers_unlock_sustainer_action(&$sustainer_record, $context) {
+  $replacements = array(
+    '%did' => $sustainer_record->did,
+    '%status' => $sustainer_record->gateway_resp,
+    );
+
+  $log = fundraiser_sustainers_log();
+
+  switch ($sustainer_record->gateway_resp) {
+    case FUNDRAISER_SUSTAINERS_PROCESSING_STATUS:
+      $sustainer_record->lock_id = 0;
+      $sustainer_record->gateway_resp = FUNDRAISER_SUSTAINERS_RETRY_STATUS;
+      $log->logUnlockedDonation($sustainer_record->did, $sustainer_record->gateway_resp);
+      drupal_set_message(t('Unlocked sustainer %did and changed its status from %status to Retry.', $replacements));
+      break;
+
+    // Include support for the NULL value, default value of gateway_resp.
+    case NULL:
+      $replacements['%status'] = FUNDRAISER_SUSTAINERS_SCHEDULED_STATUS;
+    case FUNDRAISER_SUSTAINERS_SCHEDULED_STATUS:
+      // Fall through.
+    case FUNDRAISER_SUSTAINERS_RETRY_STATUS:
+      $sustainer_record->lock_id = 0;
+      $log->logUnlockedDonation($sustainer_record->did);
+      drupal_set_message(t('Unlocked sustainer %did and left its status at %status', $replacements));
+      break;
+
+    case FUNDRAISER_SUSTAINERS_SUCCESS_STATUS:
+      // Fall through.
+    case FUNDRAISER_SUSTAINERS_FAILED_STATUS:
+      // Fall through.
+    case FUNDRAISER_SUSTAINERS_SKIPPED_STATUS:
+      // Fall through.
+    case FUNDRAISER_SUSTAINERS_CANCELED_STATUS:
+      // Fall through.
+    default:
+      drupal_set_message(t('Cannot unlock the sustainer %did because its status is %status', $replacements));
+      break;
   }
 
 }

@@ -12,25 +12,27 @@
             sizer = setTimeout(function() {
                 setColumnHeight();
             }, 200);
-        })
+        });
     });
 
     function setColumnHeight(){
-        var formHeight = $('#user-information-wrapper').height();
-        var textColumn = $('textarea[id*="edit-sba-messages-message"]').parents('.message-column');
-        var formColumn = $('#user-information-wrapper').parents('.message-column');
+        var userWrapper = $('#user-information-wrapper');
+        var formHeight = userWrapper.height();
+        var message = $('textarea[id*="edit-sba-messages-message"]');
+        var textColumn = message.parents('.message-column');
+        var formColumn = userWrapper.parents('.message-column');
         if (textColumn.attr('id') != formColumn.attr('id')) {
             var fHeight = formColumn.height();
             var tHeight = textColumn.height();
             if (formColumn.css('float') == 'none') {
-                $('textarea[id*="edit-sba-messages-message"]').css('min-height', '230px');
+                message.css('min-height', '230px');
                 return false;
             }
             if (formHeight > tHeight) {
-                var areaHeight = $('textarea[id*="edit-sba-messages-message"]').height();
+                var areaHeight = message.height();
                 var plus = fHeight - tHeight;
                 var newHeight = plus + areaHeight;
-                $('textarea[id*="edit-sba-messages-message"]').css('min-height', newHeight);
+                message.css('min-height', newHeight);
             }
         }
     }

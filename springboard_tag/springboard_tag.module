@@ -53,6 +53,7 @@ function springboard_tag_springboard_admin_admin_menu_items_alter(&$items) {
  */
 function _springboard_tag_placement_options() {
   return array(
+    'head' => 'In the head tag',
     'after body tag' => 'Directly after the opening body tag',
     'content' => 'Main content',
   );
@@ -107,6 +108,34 @@ function springboard_tag_page_alter(&$page) {
   }
 }
 
+
+/**
+ * Implements hook_html_head_alter
+ *
+ * Add springboard tags to the head tag.
+ */
+function springboard_tag_html_head_alter(&$head_content) {
+  // Load the tags for this page.
+  $tags = _springboard_tag_load_tags();
+  if (empty($tags)) {
+    return;
+  }
+
+  foreach ($tags as $tag) {
+    switch ($tag->settings['placement']) {
+      case 'head' :
+        $head[] = _springboard_tag_generate_tag($tag->tag);
+        break;
+    }
+  }
+  if (!empty($head)) {
+    // Add the content tags.
+    $head_content['springboard_tag'] = array(
+      '#markup' => "\n" . implode("\n", $head) . "\n",
+    );
+  }
+}
+
 /**
  * Add the after body tags to the page HTML.
  */
@@ -154,14 +183,18 @@ function _springboard_tag_generate_tag($snippet) {
  * Load the tags for a page request.
  */
 function _springboard_tag_load_tags() {
-  // Load all the configured tags.
-  ctools_include('export');
-  $tags = ctools_export_crud_load_all('springboard_tag');
+  $tags = &drupal_static(__FUNCTION__);
 
-  usort($tags, '_springboard_tag_load_tags_sort');
+  if (!isset($tags)) {
+    // Load all the configured tags.
+    ctools_include('export');
+    $tags = ctools_export_crud_load_all('springboard_tag');
 
-  // Allow modules to modify the tag list.
-  drupal_alter('springboard_tag_list', $tags);
+    usort($tags, '_springboard_tag_load_tags_sort');
+
+    // Allow modules to modify the tag list.
+    drupal_alter('springboard_tag_list', $tags);
+  }
 
   return $tags;
 }

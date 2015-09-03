@@ -4,14 +4,14 @@
  * Test coverage for petition quicksign.
  */
 
-class SpringboardPetitionQuicksignTestCase extends WebformUserTestSetup {
+class SpringboardadvocacyQuicksignTestCase extends WebformUserTestSetup {
   /**
    * Implementation of getInfo().
    */
   public static function getInfo() {
     return array(
-      'name' => t('Springboard Petition Quicksign'),
-      'description' => t('Test the submission functionality of springboard petition quicksign.'),
+      'name' => t('Springboard Advocacy Quicksign'),
+      'description' => t('Test the submission functionality of springboard advocacy quicksign.'),
       'group' => t('Springboard Advocacy'),
     );
   }
@@ -22,7 +22,7 @@ class SpringboardPetitionQuicksignTestCase extends WebformUserTestSetup {
   public function setUp($additional_modules = array()) {
     $enable_modules = array(
       'springboard_petition',
-      'springboard_petition_quicksign',
+      'sba_quicksign',
     );
 
     // Call the parent to set all of the base modules up.
@@ -47,7 +47,7 @@ class SpringboardPetitionQuicksignTestCase extends WebformUserTestSetup {
 
   }
 
-  public function testSpringboardPetitionQuicksignCreatePetition() {
+  public function testSpringboardadvocacyQuicksignCreatePetition() {
     $account = $this->drupalLogin($this->privileged_user);
     // confirm quicksign ui is present on node add form.
     $this->drupalGet('node/add/springboard-petition');
@@ -71,11 +71,11 @@ class SpringboardPetitionQuicksignTestCase extends WebformUserTestSetup {
     $this->assertFieldById('edit-quicksign-mail', $this->privileged_user->mail, 'Mail field present and populated from user account.');
 
     // View petition with quicksign disabled.
-    db_query('UPDATE {springboard_quicksign} SET quicksign_enabled = 0 WHERE nid = :nid', array(':nid' => $this->node->nid));
+    db_query('UPDATE {sba_quicksign} SET quicksign_enabled = 0 WHERE nid = :nid', array(':nid' => $this->node->nid));
     $this->drupalGet('node/' . $this->node->nid);
     $this->assertNoFieldById('edit-quicksign-mail', 'Quicksign form is not present when disabled.');
 
-    db_query('UPDATE {springboard_quicksign} SET quicksign_enabled = 1 WHERE nid = :nid', array(':nid' => $this->node->nid));
+    db_query('UPDATE {sba_quicksign} SET quicksign_enabled = 1 WHERE nid = :nid', array(':nid' => $this->node->nid));
     // Add a required fields for futher testing.
     db_query('UPDATE {webform_component} SET mandatory = 1 WHERE form_key = :form_key', array(':form_key' => 'sbp_first_name'));
     db_query('UPDATE {webform_component} SET mandatory = 1 WHERE form_key = :form_key', array(':form_key' => 'sbp_last_name'));
@@ -157,7 +157,7 @@ class SpringboardPetitionQuicksignTestCase extends WebformUserTestSetup {
     node_save($node);
 
     db_query('
-      INSERT INTO {springboard_quicksign} (
+      INSERT INTO {sba_quicksign} (
         nid,
         quicksign_enabled,
         form_label,
