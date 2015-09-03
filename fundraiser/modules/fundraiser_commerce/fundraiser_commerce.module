@@ -1818,7 +1818,7 @@ function fundraiser_commerce_fundraiser_refund_process($refund) {
   $method_instance = commerce_payment_method_instance_load($info['id']); // From commerce_payment.module.
   // This gets us: The payment method instance object with the addition of the settings array. Settings are per Rule.
   // Choose which of two ways to process this.
-  if (in_array($donation->donation['payment_method'], $info['offsite_processing'])) {
+  if (in_array($donation->donation['payment_method'], $info['offsite_processing']) && !in_array($donation->donation['payment_method'], $info['allow_refund'])) {
     // If external processing, we cannot execute a refund charge against it.
     drupal_set_message(t('The %title payment method indicates it is offsite processing, and cannot be refunded through this interface.',
       array('%title' => $method_instance['title'])), 'error');
@@ -1845,6 +1845,7 @@ function fundraiser_commerce_fundraiser_refund_process($refund) {
     $refund->donation = $donation;
     $refund_function = $info['refund callback'];
     $success = $refund_function($method_instance, $refund);
+//    $refund = fundraiser_refund_get_refund($refund->rid, $refresh = TRUE);
   }
   // Update the donation and order data and result values based on the success.
   _fundraiser_commerce_update_donation_result_data($donation, $success);
@@ -1861,7 +1862,8 @@ function fundraiser_commerce_fundraiser_refund_process($refund) {
     }
     $refund->donation = $donation;
     $refund->receipt_id = $donation->result['data']['remote_id'];
-    $refund->txn_id = $donation->result['data']['txn_id'];
+    // If txn_id has been set by out refund function above, use that.
+    $refund->txn_id = !empty($refund->txn_id) ? $refund->txn_id :$donation->result['data']['txn_id'];
   }
 }
 
@@ -2064,8 +2066,9 @@ function _fundraiser_commerce_order_data_prepare($data) {
   $encrypted = _fundraiser_commerce_encrypt(serialize($data));
 
   // Check to ensure the correct encryption was used
+  // @todo: Fix underlying issue with encrypting PayPal data, so that we don't need the workaround below.
   $encryption_array = unserialize($encrypted);
-  if (!isset($encryption_array['method']) || $encryption_array['method'] != 'mcrypt_rij_256' || !isset($encryption_array['key_name']) || $encryption_array['key_name'] != 'secure_file_key') {
+  if (!isset($encryption_array['method']) || ($data['payment_method'] != 'paypal' && $encryption_array['method'] != 'mcrypt_rij_256') || !isset($encryption_array['key_name']) || $encryption_array['key_name'] != 'secure_file_key') {
     watchdog('fundraiser_commerce', 'The encryption module has not been configured correctly. You may need to patch or update your version.', array(), WATCHDOG_EMERGENCY, l('Fix', 'admin/config/system/encrypt'));
     return FALSE;
   }
@@ -2088,12 +2091,18 @@ function _fundraiser_commerce_order_data_retrieve($data) {
  * Helper function, wrapper for encrypt function.
  */
 function _fundraiser_commerce_encrypt($input) {
+  $unserialized = unserialize($input);
   if (module_exists('encrypt')) {
     module_load_install('encrypt');
     $requirements = encrypt_requirements('runtime');
     if (isset($requirements['encrypt_keys']) && $requirements['encrypt_keys']['severity'] == REQUIREMENT_ERROR) {
       drupal_set_message(t('A problem was found with your secure key.') . ' ' .
         $requirements['encrypt_keys']['value'], 'warning');
+    }
+    // Implicitly set 'none' encryption method for PayPal to avoid decryption errors.
+    // @todo: Debug underlying issue preventng PayPal data from decrypting properly when using Mcrypt AES 256 method.
+    elseif ($unserialized['payment_method'] == 'paypal') {
+      return encrypt($input, array(), 'none');
     }
     else {
       return encrypt($input);
@@ -2196,6 +2205,39 @@ class FundraiserCommerceUIPaymentSettings extends RulesDataUI implements RulesDa
           '#default_value' => isset($settings['payment_method']['settings']['offsite_recurring']) ? $settings['payment_method']['settings']['offsite_recurring'] : FALSE,
         );
       }
+      // Make sitewide submit button text customizable for each payment method.
+      $form[$name]['settings']['submit_text'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Submit button text'),
+        '#description' => t('Overrides sitewide submit button text. Must be enabled under \'Confirmation page & settings\' tab on individual webforms.'),
+        '#default_value' => !empty($settings['payment_method']['settings']['submit_text']) ? $settings['payment_method']['settings']['submit_text'] : '',
+      );
+      // Add payment intro HTML option.
+      $form[$name]['settings']['intro_html'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Introductory HTML'),
+        '#description' => t('If set, this HTML appears just below the payment method field on the form'),
+        '#default_value' => !empty($settings['payment_method']['settings']['intro_html']) ? $settings['payment_method']['settings']['intro_html'] : '',
+      );
+      // Add radio image field options to each payment type.
+      $form[$name]['settings']['selected_image'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Selected image URL'),
+        '#description' => t('If added, this image will be shown as part of the radio button label when several payment methods are available to the user and this particular payment method is selected.'),
+        '#default_value' => !empty($settings['payment_method']['settings']['selected_image']) ? $settings['payment_method']['settings']['selected_image'] : '',
+      );
+      $form[$name]['settings']['unselected_image'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Unselected image URL'),
+        '#description' => t('If added, this image will be shown as part of the radio button label when several payment methods are available to the user and this particular payment method is not selected.'),
+        '#default_value' => !empty($settings['payment_method']['settings']['unselected_image']) ? $settings['payment_method']['settings']['unselected_image'] : '',
+      );
+      $form[$name]['settings']['standalone_image'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Standalone image URL'),
+        '#description' => t('If added, this image will be shown as part of the radio button label when only a single payment method is available to the user.'),
+        '#default_value' => !empty($settings['payment_method']['settings']['standalone_image']) ? $settings['payment_method']['settings']['standalone_image'] : '',
+      );
     }
     else {
       $form[$name]['invalid']['#markup'] = t('Invalid or missing payment method.');
@@ -2250,42 +2292,59 @@ function fundraiser_commerce_commerce_paypal_ipn_process($order, $payment_method
   if ($ipn['payment_status'] == 'Pending') {
     return;
   }
-  // Anything else, except Completed counts as a fail.
-  $success = FALSE;
-  if ($ipn['payment_status'] == 'Completed' || $ipn['payment_status'] == 'Refunded') {
-    $success = TRUE;
+  if ($ipn['payment_status'] == 'Completed') {
+    // Grab the donation object from the order.
+    $donation = fundraiser_donation_get_donation($order->order_id);
+    // Update the donation and order data and result values based on the success.
+    _fundraiser_commerce_update_donation_result_data($donation, TRUE);
+    // Finish up any last cleanup for this transaction.
+    fundraiser_commerce_fundraiser_donation_after_process($donation);
+    // Save the donation
+    fundraiser_donation_update($donation);
+    // Finish up the submission to kick off success / decline triggers.
+    _fundraiser_donation_submit_after_process($donation);
   }
-  // Grab the donation object from the order.
-  $donation = fundraiser_donation_get_donation($order->order_id);
-  // Update the donation and order data and result values based on the success.
-  _fundraiser_commerce_update_donation_result_data($donation, $success);
-  // Finish up any last cleanup for this transaction.
-  fundraiser_commerce_fundraiser_donation_after_process($donation);
-  // Save the donation
-  fundraiser_donation_update($donation);
-  // Finish up the submission to kick off success / decline triggers.
-  _fundraiser_donation_submit_after_process($donation);
   if ($ipn['payment_status'] == 'Refunded') {
-    _fundraiser_commerce_ipn_refund($donation, $ipn);
+    // commerce_paypal_wps handles the Commerce refund transactions. This is here to record the fundrasier_refund item
+    // when the refund is initiated from the PayPal dashboard.
+    $donation = fundraiser_donation_get_donation($order->order_id);
+    _fundraiser_commerce_ipn_refund($donation, $payment_method, $ipn);
+
+  }
+  if ($ipn['payment_status'] == 'Reversed') {
+    $donation = fundraiser_donation_get_donation($order->order_id);
+    _fundraiser_commerce_ipn_reverse($donation, $ipn);
+
   }
 }
 
-function _fundraiser_commerce_ipn_refund($donation, $ipn) {
+/**
+ * Callback function to record fundrasier_refund items when refund initiated
+ * from PayPal dashboard (instead of through Springboard).
+ */
+function _fundraiser_commerce_ipn_refund($donation, $payment_method, $ipn) {
+  // If the fundraiser_refund record has already been saved, we don't need to continue.
+  $results = _fundraiser_get_refund_by_txn_id($ipn['txn_id']);
+  if ($results) {
+    return;
+  }
   // Set up the refund.
   $already_refunded = fundraiser_refund_get_refunds_by_did($donation->did, TRUE);
   $refunded_total = 0;
   if(!empty($already_refunded)) {
     foreach ($already_refunded as $prior) {
-     $refunded_total += ($prior->amount * -1);
+      // Omit the same refund transaction, if submitted through Springboard.
+      if ($prior->txn_id != $ipn['parent_txn_id']) {
+        $refunded_total += ($prior->amount * -1);
+      }
     }
   }
-  $able_to_refund = ($donation->donation['amount'] - $refunded_total);
+  $able_to_refund = ($donation->donation['amount'] + $refunded_total);
   $new_status = 'partially_refunded';
   // Partial refund
-  $amount = $ipn['payment_gross'];
-  if (($amount * -1) >= $able_to_refund) {
-    $amount = $able_to_refund * -1;
-    $new_status = 'refunded';
+  $amount = $ipn['mc_gross'];
+  if ($amount >= $able_to_refund) {
+    $new_status = COMMERCE_PAYMENT_STATUS_FAILURE;
   }
 
   $refund = new stdClass();
@@ -2294,6 +2353,7 @@ function _fundraiser_commerce_ipn_refund($donation, $ipn) {
   $refund->currency = $donation->currency;
   $refund = fundraiser_refund_create($refund);
   $refund->new_status = $new_status;
+  $refund->ipn = TRUE;
   fundraiser_refund_process($refund);
   // At this point $donation->result is set and responses can be handled.
   if (!isset($refund->result['message'])) {
@@ -2305,7 +2365,66 @@ function _fundraiser_commerce_ipn_refund($donation, $ipn) {
   }
   else {
     $donation->result['success'] = FALSE;
-    watchdog('ipn_refund_fail', '%ipn: Your refund failed to be processed.', array('%ipn', $ipn['item_name1']));
+    watchdog('ipn_refund_fail', '%ipn: A reversal failed to be processed.', array('%ipn', $ipn['item_name1']));
+  }
+}
+
+/**
+ * Callback function to handle chargebacks sent by PayPal.
+ */
+function _fundraiser_commerce_ipn_reverse($donation, $ipn) {
+  // Create a new payment transaction for the order.
+  $transaction = commerce_payment_transaction_new('paypal_wps', $donation->did);
+  $transaction->instance_id = $ipn['parent_txn_id'];
+  $transaction->remote_id = $ipn['txn_id'];
+  $transaction->amount = commerce_currency_decimal_to_amount($ipn['mc_gross'], $ipn['mc_currency']);
+  $transaction->currency_code = $ipn['mc_currency'];
+  $transaction->payload[REQUEST_TIME . '-ipn'] = $ipn;
+
+  // Set the transaction's statuses based on the IPN's payment_status.
+  $transaction->remote_status = $ipn['payment_status'];
+  $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+  $transaction->message = t('Reversal by PayPal.');
+  commerce_payment_transaction_save($transaction);
+
+  // Set up the refund.
+  $already_refunded = fundraiser_refund_get_refunds_by_did($donation->did, TRUE);
+  $refunded_total = 0;
+  if(!empty($already_refunded)) {
+    foreach ($already_refunded as $prior) {
+      // Omit the same refund transaction, if submitted through Springboard.
+      if ($prior->txn_id != $ipn['parent_txn_id']) {
+        $refunded_total += ($prior->amount * -1);
+      }
+    }
+  }
+  $able_to_refund = ($donation->donation['amount'] + $refunded_total);
+  $new_status = 'partially_refunded';
+  // Partial refund
+  $amount = $ipn['mc_gross'];
+  if ($amount >= $able_to_refund) {
+    $new_status = COMMERCE_PAYMENT_STATUS_FAILURE;
+  }
+
+  $refund = new stdClass();
+  $refund->did = $donation->did;
+  $refund->amount =  $amount;
+  $refund->currency = $donation->currency;
+  $refund = fundraiser_refund_create($refund);
+  $refund->new_status = $new_status;
+  $refund->ipn = TRUE;
+  fundraiser_refund_process($refund);
+  // At this point $donation->result is set and responses can be handled.
+  if (!isset($refund->result['message'])) {
+    $refund->result['message'] = '';
+  }
+  // The results should be at $donation->result, ready to respond to the aftermath.
+  if (isset($refund->result['success']) && $refund->result['success'] == TRUE) {
+    fundraiser_refund_success($refund);
+  }
+  else {
+    $donation->result['success'] = FALSE;
+    watchdog('ipn_refund_fail', '%ipn: A reversal failed to be processed.', array('%ipn', $ipn['item_name1']));
   }
 }
 
@@ -2620,3 +2739,88 @@ function fundraiser_commerce_flatten_gateway_settings($settings) {
   return $flat;
 }
 
+/**
+ * Implements hook_form_alter().
+ *
+ * Alter the webform client form for donation content types.
+ * This is done with hook_form_alter and not hook_form_FORM_ID_alter
+ * because webform's form id varies.
+ * Ex. webform_client_form_NID.
+ */
+function fundraiser_commerce_form_alter(&$form, &$form_state, $form_id) {
+  if (strstr($form_id, 'webform_client_form') !== FALSE && fundraiser_is_donation_type($form['#node']->type)) {
+    $node = $form['#node'];
+    // Load any custom configuration options.
+    $config = db_query('SELECT * FROM {fundraiser_webform_messages} f WHERE f.nid = :nid', array(':nid' => $form['#node']->nid))->fetchAssoc();
+
+    // Change submit button text based on webform configuration and payment method
+    // submit button setting (if any).
+    if (empty($config['sitewide_submit']) && empty($form['#node']->webform['submit_text'])) {
+      // Change submit button text to payment gateway default, when only one gateway available.
+      $enabled = 0;
+      $button_info = array();
+      $button_images = array();
+      foreach ($node->gateways as $gateway) {
+        if (!empty($gateway['status']) && $gateway['status'] == 1) {
+          $enabled++;
+          $active_gateway = $gateway;
+          $gateway_rule_name = substr($active_gateway['id'], strpos($active_gateway['id'], "|") + 1); //@TODO: is there a better way to get the rule name?
+          $rule = rules_config_load($gateway_rule_name);
+          $actions = $rule->actions();
+          foreach ($actions as $action) {
+            $settings = $action->settings;
+          }
+          $gateway_config = isset($settings['payment_method']['settings']) ? $settings['payment_method']['settings'] : '';
+          if (!empty($gateway_config['submit_text'])) {
+            $button_info[$active_gateway['method']]['text'] = $gateway_config['submit_text'];
+          }
+          else {
+            $button_info[$active_gateway['method']]['text'] = $form['actions']['submit']['#value'];
+          }
+
+          // Insert Intro HTML settings field into payment information fieldset.
+          if (!empty($settings['payment_method']['settings']['intro_html'])) {
+            // Reorder the intro HTML to be first.
+            $payment_array = $form['submitted']['payment_information']['payment_fields'][$gateway['method']];
+            $reordered = array_slice($payment_array, 0, 2, TRUE) +
+              array('intro_html' => array('#markup' => '<div>' . $settings['payment_method']['settings']['intro_html'] . '</div>')) +
+              array_slice($payment_array, 2, count($payment_array)-2, TRUE);
+              $form['submitted']['payment_information']['payment_fields'][$gateway['method']] = $reordered;
+          }
+
+          // Add payment selection images.
+          $option_text = !empty($form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']]) ? $form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']] : '';
+          $form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']] = '<img data-gateway="' . $gateway['method'] . '" id="' . $gateway['method'] . '-payment-option-img" src="//:0" />' . $option_text;
+          $button_info[$active_gateway['method']]['unselected_image'] = !empty($settings['payment_method']['settings']['unselected_image']) ? $settings['payment_method']['settings']['unselected_image'] : '';
+          $button_info[$active_gateway['method']]['selected_image'] = !empty($settings['payment_method']['settings']['selected_image']) ? $settings['payment_method']['settings']['selected_image'] : '';
+          $button_info[$active_gateway['method']]['standalone_image'] = !empty($settings['payment_method']['settings']['standalone_image']) ? $settings['payment_method']['settings']['standalone_image'] : '';
+
+          if (!empty($settings['payment_method']['settings']['unselected_image'])) {
+            $form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']] = '<img data-gateway="' . $gateway['method'] . '" id="' .$gateway['method'] . '-payment-option-img" src="'. $settings['payment_method']['settings']['unselected_image'] . '"> ' . $option_text;
+          }
+        }
+      }
+      // Pass number of enabled gateways to js.
+      $button_info['enabled_count'] = $enabled;
+      // Add standalone image if only one gateway is enabled.
+      if ($enabled == 1) {
+        foreach ($node->gateways as $gateway) {
+          if (!empty($gateway['status']) && $gateway['status'] == 1) {
+            $form['submitted']['payment_information']['payment_fields'][$gateway['method']]['#description'] = '<img src="' . $settings['payment_method']['settings']['standalone_image'] . '">';
+          }
+        }
+      }
+      drupal_add_js(drupal_get_path('module', 'fundraiser') . '/js/fundraiser.js');
+      drupal_add_js(array('fundraiser' => $button_info), 'setting');
+    }
+
+  }
+  // Make sure our form_alter hooks in payment gateway include files are always loaded.
+  $methods = new stdClass();
+  $methods->payment_methods = array();
+  rules_invoke_all('commerce_payment_methods', $methods);
+  foreach ($methods->payment_methods as $id => $info) {
+      $method_instance = commerce_payment_method_instance_load($id); // From commerce_payment.module.
+      module_load_include('inc', 'fundraiser_commerce', '/gateways/' . $method_instance['module']);
+  }
+}

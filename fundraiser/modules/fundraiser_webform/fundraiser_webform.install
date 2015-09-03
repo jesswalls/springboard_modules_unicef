@@ -23,6 +23,13 @@ function fundraiser_webform_schema() {
         'not null' => TRUE,
         'size' => 'big',
       ),
+      'sitewide_submit' => array(
+        'description' => 'Bool to use sitewide or webform submit button text.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'size' => 'tiny',
+        'default' => 0,
+      ),
     ),
     'primary key' => array('nid'),
   );
@@ -119,4 +126,21 @@ function fundraiser_webform_update_7001() {
     'primary key' => array('nid'),
   );
   db_create_table($schema_name, $schema[$schema_name]);
+}
+
+/**
+ * Add field to fundraiser_webform_messages table to store additional settings for submit buttons.
+ */
+function fundraiser_webform_update_7002() {
+  $table = 'fundraiser_webform_messages';
+  $field = 'sitewide_submit';
+  $schema = array(
+    'description' => 'Bool to use sitewide or webform submit button text.',
+    'type' => 'int',
+    'not null' => TRUE,
+    'size' => 'tiny',
+    'default' => 0,
+    'description' => 'Stores the description text for submit buttons.',
+  );
+  db_add_field($table, $field, $schema);
 }

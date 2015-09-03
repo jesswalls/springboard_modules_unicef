@@ -1344,24 +1344,35 @@ function fundraiser_webform_form_webform_configure_form_alter(&$form, &$form_sta
   // Custom help text for submit button.
   if (fundraiser_is_donation_type($form['#node']->type)) {
     if (isset($form['#node']->nid)) {
-      $text = db_query('SELECT nid, message FROM {fundraiser_webform_messages} f WHERE f.nid = :nid', array(':nid' => $form['#node']->nid))->fetchAssoc();
+      $text = db_query('SELECT nid, message, sitewide_submit FROM {fundraiser_webform_messages} f WHERE f.nid = :nid', array(':nid' => $form['#node']->nid))->fetchAssoc();
       if ($text['nid']) {
         $message = $text['message'];
+        $sitewide_submit = $text['sitewide_submit'];
       }
     }
+    $form['advanced']['sitewide_submit'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Use sitewide submit button default.'),
+      '#description' => t('If checked, the sitewide default submit button language will be used, rather than the payment method configured submit button language
+       (if any). Either can be overridden below.'),
+      '#default_value' => isset($sitewide_submit) ? $sitewide_submit : FALSE,
+      '#weight' => 97,
+    );
+    $form['advanced']['submit_text']['#weight'] = 98;
     $form['advanced']['submit_description'] = array(
       '#type' => 'textarea',
       '#title' => t('Custom help text for the submit button.'),
       '#description' => t('Enter help text that appears above the submit button. The token "%submit_text" may be used get the submit button\'s text value.'),
       '#default_value' => isset($message) ? $message : t('By clicking %submit_text your credit card will be securely processed.'),
+      '#weight' => 99,
     );
     $form['#submit'][] = 'fundraiser_webform_submit_text_submit';
   }
 }
 
 function fundraiser_webform_submit_text_submit(&$form, &$form_state) {
-  if (isset($form_state['values']['submit_description'])) {
-    $fields = array('nid' => $form['#node']->nid, 'message' => $form_state['values']['submit_description']);
+  if (isset($form_state['values']['submit_description']) || isset($form_state['values']['sitewide_submit'])) {
+    $fields = array('nid' => $form['#node']->nid, 'message' => $form_state['values']['submit_description'], 'sitewide_submit' => $form_state['values']['sitewide_submit']);
     $nid = db_query('SELECT nid FROM {fundraiser_webform_messages} f WHERE f.nid = :nid', array(':nid' => $form['#node']->nid))->fetchField();
     if (!$nid) {
       db_insert('fundraiser_webform_messages')->fields($fields)->execute();
