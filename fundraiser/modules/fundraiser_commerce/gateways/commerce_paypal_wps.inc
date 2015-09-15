@@ -176,7 +176,7 @@ function commerce_paypal_wps_fundraiser_commerce_refund($payment_method, $refund
 }
 
 /*
- *  Implements hook_form_alter().
+ *  Implements hook_form_FORMID_alter().
  *
  */
 function commerce_paypal_wps_form_rules_ui_edit_element_alter(&$form, &$form_state) {

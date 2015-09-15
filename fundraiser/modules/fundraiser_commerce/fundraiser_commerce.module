@@ -2685,6 +2685,8 @@ function fundraiser_commerce_form_rules_ui_edit_element_alter(&$form, &$form_sta
     $form['#submit'][] = 'fundraiser_commerce_gateway_log_gateway_settings_changes';
     $form['#attached']['js'][]= drupal_get_path('module', 'fundraiser_commerce') . '/js//gateway.js';
   }
+  // Make sure our form_alter hooks in payment gateway include files are always loaded.
+  module_load_include('inc', 'fundraiser_commerce', '/gateways/' . $method['module']);
 }
 
 /**
