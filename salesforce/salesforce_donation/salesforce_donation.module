@@ -450,10 +450,10 @@ function salesforce_donation_salesforce_genmap_map_fields(stdClass $donation, En
       $stage = 'Posted';
       $mapped_stages = variable_get('salesforce_donation_mapped_stages', salesforce_donation_default_stage_map());
       if (!empty($mapped_stages)) {
-        if (in_array($donation->status, $mapped_stages)) {
-          $flipped_stages = array_flip($mapped_stages);
-
-          $stage = $flipped_stages[$donation->status];
+        foreach ($mapped_stages as $parent => $item) {
+          if(in_array($donation->status, $item)) {
+            $stage = $parent;
+          }
         }
       }
       $fields[$sf_field] = $stage;
