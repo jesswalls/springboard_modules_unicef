@@ -160,7 +160,6 @@ function commerce_paypal_wps_fundraiser_commerce_refund($payment_method, $refund
     'TRANSACTIONID' => $refund->donation->data['remote_id'],
     'AMT' => $amount,
     'REFUNDTYPE' => $default_amount - $amount ? 'Partial' : 'Full',
-    'MSGSUBID' => $refund->rid,
   );
 
   // Submit the capture request request to PayPal.
