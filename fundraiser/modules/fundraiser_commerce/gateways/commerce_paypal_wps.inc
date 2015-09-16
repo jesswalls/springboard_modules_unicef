@@ -147,6 +147,7 @@ function commerce_paypal_wps_fundraiser_commerce_refund($payment_method, $refund
     return TRUE;
   }
   $order = commerce_order_load($refund->did);
+  $donation = fundraiser_donation_get_donation($order->order_id);
   $amount =  $refund->amount;
   $default_amount = $refund->donation->amount;
 
@@ -166,7 +167,24 @@ function commerce_paypal_wps_fundraiser_commerce_refund($payment_method, $refund
   $response = commerce_paypal_api_request($payment_method, $nvp, $order);
   if ($response['ACK'] == "Success") {
     $refund->txn_id = $response['REFUNDTRANSACTIONID'];
+
+    // Set up the refund.
+    $already_refunded = fundraiser_refund_get_refunds_by_did($donation->did, TRUE);
+    $refunded_total = 0;
+    if(!empty($already_refunded)) {
+      foreach ($already_refunded as $prior) {
+        // Omit the same refund transaction, if submitted through Springboard.
+        if ($prior->txn_id != $refund->txn_id) {
+          $refunded_total += ($prior->amount * -1);
+        }
+      }
+    }
+    $able_to_refund = ($donation->donation['amount'] + $refunded_total);
+    if ($amount < $able_to_refund) {
+      $refund->new_status = 'partially_refunded';
+    }
     fundraiser_refund_update($refund, FALSE);
+
     return TRUE;
   }
   else {
