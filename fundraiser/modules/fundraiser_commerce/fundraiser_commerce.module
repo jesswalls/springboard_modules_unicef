@@ -2757,50 +2757,64 @@ function fundraiser_commerce_form_alter(&$form, &$form_state, $form_id) {
 
     // Change submit button text based on webform configuration and payment method
     // submit button setting (if any).
-    if (empty($config['sitewide_submit']) && empty($form['#node']->webform['submit_text'])) {
-      // Change submit button text to payment gateway default, when only one gateway available.
-      $enabled = 0;
-      $button_info = array();
-      $button_images = array();
-      foreach ($node->gateways as $gateway) {
-        if (!empty($gateway['status']) && $gateway['status'] == 1) {
-          $enabled++;
-          $active_gateway = $gateway;
-          $gateway_rule_name = substr($active_gateway['id'], strpos($active_gateway['id'], "|") + 1); //@TODO: is there a better way to get the rule name?
-          $rule = rules_config_load($gateway_rule_name);
-          $actions = $rule->actions();
-          foreach ($actions as $action) {
-            $settings = $action->settings;
-          }
-          $gateway_config = isset($settings['payment_method']['settings']) ? $settings['payment_method']['settings'] : '';
-          if (!empty($gateway_config['submit_text'])) {
-            $button_info[$active_gateway['method']]['text'] = $gateway_config['submit_text'];
-          }
-          else {
-            $button_info[$active_gateway['method']]['text'] = $form['actions']['submit']['#value'];
-          }
-
-          // Insert Intro HTML settings field into payment information fieldset.
-          if (!empty($settings['payment_method']['settings']['intro_html'])) {
-            // Reorder the intro HTML to be first.
-            $payment_array = $form['submitted']['payment_information']['payment_fields'][$gateway['method']];
-            $reordered = array_slice($payment_array, 0, 2, TRUE) +
-              array('intro_html' => array('#markup' => '<div>' . $settings['payment_method']['settings']['intro_html'] . '</div>')) +
-              array_slice($payment_array, 2, count($payment_array)-2, TRUE);
-              $form['submitted']['payment_information']['payment_fields'][$gateway['method']] = $reordered;
-          }
-
-          // Add payment selection images.
-          $option_text = !empty($form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']]) ? $form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']] : '';
-          $form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']] = '<img data-gateway="' . $gateway['method'] . '" id="' . $gateway['method'] . '-payment-option-img" src="//:0" />' . $option_text;
-          $button_info[$active_gateway['method']]['unselected_image'] = !empty($settings['payment_method']['settings']['unselected_image']) ? $settings['payment_method']['settings']['unselected_image'] : '';
-          $button_info[$active_gateway['method']]['selected_image'] = !empty($settings['payment_method']['settings']['selected_image']) ? $settings['payment_method']['settings']['selected_image'] : '';
-          $button_info[$active_gateway['method']]['standalone_image'] = !empty($settings['payment_method']['settings']['standalone_image']) ? $settings['payment_method']['settings']['standalone_image'] : '';
-
-          if (!empty($settings['payment_method']['settings']['unselected_image'])) {
-            $form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']] = '<img data-gateway="' . $gateway['method'] . '" id="' .$gateway['method'] . '-payment-option-img" src="'. $settings['payment_method']['settings']['unselected_image'] . '"> ' . $option_text;
-          }
+    $sitewide_submit = !empty($config['sitewide_submit']);
+    $webform_submit = empty($form['#node']->webform['submit_text']) ? FALSE : $form['#node']->webform['submit_text'];
+  
+    // Change submit button text to payment gateway default, when only one gateway available.
+    $enabled = 0;
+    $button_info = array();
+    $button_images = array();
+    foreach ($node->gateways as $gateway) {
+      if (!empty($gateway['status']) && $gateway['status'] == 1) {
+        $enabled++;
+        $active_gateway = $gateway;
+        $gateway_rule_name = substr($active_gateway['id'], strpos($active_gateway['id'], "|") + 1); //@TODO: is there a better way to get the rule name?
+        $rule = rules_config_load($gateway_rule_name);
+        $actions = $rule->actions();
+        foreach ($actions as $action) {
+          $settings = $action->settings;
         }
+        $gateway_config = isset($settings['payment_method']['settings']) ? $settings['payment_method']['settings'] : '';
+        // Default to sitewide submit button text
+        if ($sitewide_submit) {
+          $button_info[$active_gateway['method']]['text'] = 'SUBMIT';
+        }
+        // Second precendence, default to webform override submit button text
+        else if ($webform_submit) {
+          $button_info[$active_gateway['method']]['text'] = $form['actions']['submit']['#value'];
+        }
+        // If there are no sitewide or webform overrides and there's text for the gateway, use that
+        else if (!empty($gateway_config['submit_text']) && !$webform_submit && !$sitewide_submit) {
+          $button_info[$active_gateway['method']]['text'] = $gateway_config['submit_text'];
+        }
+        // Default in case we have nothing.
+        else {
+           $button_info[$active_gateway['method']]['text'] = 'SUBMIT';
+        }
+        
+      
+
+        // Insert Intro HTML settings field into payment information fieldset.
+        if (!empty($settings['payment_method']['settings']['intro_html'])) {
+          // Reorder the intro HTML to be first.
+          $payment_array = $form['submitted']['payment_information']['payment_fields'][$gateway['method']];
+          $reordered = array_slice($payment_array, 0, 2, TRUE) +
+            array('intro_html' => array('#markup' => '<div>' . $settings['payment_method']['settings']['intro_html'] . '</div>')) +
+            array_slice($payment_array, 2, count($payment_array)-2, TRUE);
+            $form['submitted']['payment_information']['payment_fields'][$gateway['method']] = $reordered;
+        }
+
+        // Add payment selection images.
+        $option_text = !empty($form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']]) ? $form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']] : '';
+        $form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']] = '<img data-gateway="' . $gateway['method'] . '" id="' . $gateway['method'] . '-payment-option-img" src="//:0" />' . $option_text;
+        $button_info[$active_gateway['method']]['unselected_image'] = !empty($settings['payment_method']['settings']['unselected_image']) ? $settings['payment_method']['settings']['unselected_image'] : '';
+        $button_info[$active_gateway['method']]['selected_image'] = !empty($settings['payment_method']['settings']['selected_image']) ? $settings['payment_method']['settings']['selected_image'] : '';
+        $button_info[$active_gateway['method']]['standalone_image'] = !empty($settings['payment_method']['settings']['standalone_image']) ? $settings['payment_method']['settings']['standalone_image'] : '';
+
+        if (!empty($settings['payment_method']['settings']['unselected_image'])) {
+          $form['submitted']['payment_information']['payment_method']['#options'][$gateway['method']] = '<img data-gateway="' . $gateway['method'] . '" id="' .$gateway['method'] . '-payment-option-img" src="'. $settings['payment_method']['settings']['unselected_image'] . '"> ' . $option_text;
+        }
+      //}
       }
       // Pass number of enabled gateways to js.
       $button_info['enabled_count'] = $enabled;
